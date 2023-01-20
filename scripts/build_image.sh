@@ -19,10 +19,11 @@ dir=`pwd`
 # Get original image and uncompress
 if [ ! -f images/$srcimg ]; then
     echo "fetching Raspian buster (legacy).."
+    mkdir -p images
     cd images
     wget https://downloads.raspberrypi.org/raspios_lite_armhf/images/raspios_lite_armhf-2021-01-12/2021-01-11-raspios-buster-armhf-lite.zip
     echo "Uncompressing image.."
-    unzip $srcimg.zip
+    unzip 2021-01-11-raspios-buster-armhf-lite.zip
     cd $dir
 fi
 

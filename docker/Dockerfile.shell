@@ -3,7 +3,7 @@
 
 
 from cross
-run apt-get update && apt-get -y install unzip
+run apt-get update && apt-get -y install unzip libncurses-dev
 
 
 workdir /

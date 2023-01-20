@@ -43,7 +43,6 @@ Detector::Detector(State &_state, int _width, int _height, int tc, int tr, int t
     p_colour        = new Program(get_file("../shaders/vs_simple.glsl"), get_file("../shaders/colour.glsl"), "colour");
     dict            = new Dictionary(t_codes);
 
-    p_qpu_blit          = new QPUprogram(state, "qpu_blit_tiled.bin", 0, 10, 15, 64, 32, 64);
     p_qpu_shi_tomasi    = new QPUprogram(state, "qpu_shi_tomasi_opt_tiled.bin", 0, 10, 15, 64, 32, 64);
     p_qpu_shi_tomasi_scale  = new QPUprogram(state, "qpu_shi_tomasi_scale_tiled.bin", 33, 10, 15, 64, 32, 64, 1024);
     //p_qpu_suppress      = new QPUprogram(state, "qpu_suppress_tiled.bin",   2, 10, 15, 64, 32, 64);

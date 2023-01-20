@@ -24,13 +24,14 @@ echo "Running docker on image $dstimg"
 
 
 # # Opencv build rdependencies
-do_on_image_chroot apt-get -y install libgles2-mesa-dev build-essential \
+do_on_image_chroot sh -c 'apt-get update --allow-releaseinfo-change && \
+apt-get -y install libgles2-mesa-dev build-essential \
 gfortran python3-dev python3-numpy libjpeg-dev libtiff-dev libgif-dev \
 libgstreamer1.0-dev gstreamer1.0-gtk3 libgstreamer-plugins-base1.0-dev gstreamer1.0-gl \
 libavcodec-dev libavformat-dev libswscale-dev libgtk2.0-dev libcanberra-gtk* \
 libxvidcore-dev libx264-dev libgtk-3-dev libtbb2 libtbb-dev libdc1394-22-dev libv4l-dev \
 libopenblas-dev libatlas-base-dev libblas-dev libjasper-dev liblapack-dev libhdf5-dev \
-protobuf-compiler python-dev python-numpy python-pip libncurses-dev libdrm-dev
+protobuf-compiler python-dev python-numpy python-pip libncurses-dev libdrm-dev'
 
 
 #
