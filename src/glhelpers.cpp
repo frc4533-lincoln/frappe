@@ -626,6 +626,47 @@ uint32_t VPUprogram::execute(uint32_t r0, uint32_t r1, uint32_t r2, uint32_t r3,
 }
 
 
+
+QPUprogram::QPUprogram(State &_state, uint8_t *start, uint32_t size, int _exu, int _tc, int _tr, int _w, int _h, int _mw, int _cs)
+:   state(_state),
+    uniforms(6 + _exu),
+    tile_cols(_tc),
+    tile_rows(_tr),
+    tile_width(_w),
+    tile_height(_h),
+    min_width(_mw),
+    num_instances(_tr * _tc),
+    uvalues(_exu),
+    constants(_cs)
+{
+    progmemSetup.codeSize       = size;
+    progmemSetup.uniformsSize   = uniforms * num_instances;
+    progmemSetup.messageSize    = 0;
+    progmemSetup.constantsSize  = constants;
+
+    printf("Loading QPU program %x+%x\n", start, size);
+    qpu_initProgram(&program, &state.base, progmemSetup);
+
+    qpu_lockBuffer(&program.progmem_buffer);
+    memcpy(program.progmem.code.arm.cptr, start, size);
+    qpu_unlockBuffer(&program.progmem_buffer);
+
+
+
+    //qpu_loadProgramCode(&program, bin_file.c_str());
+
+
+	qpu_setupPerformanceCounters(&state.base, &perfState);
+	perfState.qpusUsed = 0;
+    for(int i = 0; i < 12; i++)
+        if (state.enableQPU[i])
+            perfState.qpusUsed++;
+
+    last_src_addr = 0;
+    last_dst_addr = 0;
+
+    perflog = false;
+}
 QPUprogram::QPUprogram(State &_state, std::string bin_file, int _exu, int _tc, int _tr, int _w, int _h, int _mw, int _cs)
 :   state(_state),
     uniforms(6 + _exu),
@@ -638,6 +679,7 @@ QPUprogram::QPUprogram(State &_state, std::string bin_file, int _exu, int _tc, i
     uvalues(_exu),
     constants(_cs)
 {
+    printf("Loading QPU program %s\n", bin_file.c_str());
     progmemSetup.codeSize       = qpu_getCodeSize(bin_file.c_str());
     progmemSetup.uniformsSize   = uniforms * num_instances;
     progmemSetup.messageSize    = 0;

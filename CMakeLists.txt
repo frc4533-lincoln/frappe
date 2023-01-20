@@ -70,19 +70,26 @@ set(QPU_SOURCES
     shaders/qpu_suppress_opt_tiled.asm
     shaders/qpu_warp.asm
 )
+set(QPU_OBJECTS "")
 add_custom_target(qpu_programs)
 foreach (file ${QPU_SOURCES})
     get_filename_component(file_name ${file} NAME_WE)
     add_custom_command(
-        OUTPUT ${file_name}.bin
+        OUTPUT ${file_name}.o
         DEPENDS ${file}
         COMMAND ${VC4ASM} -V -o ${CMAKE_CURRENT_BINARY_DIR}/${file_name}.bin ${CMAKE_SOURCE_DIR}/${file}
+        #COMMAND objcopy -I binary -O elf32-littlearm --rename-section .data=.rodata,alloc,load,readonly ${file_name}.bin ${file_name}.o
+        COMMAND ${TOOLCHAIN_LD} -r -b binary -o ${file_name}.o ${file_name}.bin 
     )
     add_custom_target(${file_name}
-        DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/${file_name}.bin
+        DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/${file_name}.o
     )
     add_dependencies(qpu_programs ${file_name})
+    list(APPEND QPU_OBJECTS ${file_name}.o)
 endforeach()
+
+set_source_files_properties(qpu_warp.o PROPERTIES EXTERNAL_OBJECT true GENERATED true)
+
 
 set(VPU_SOURCES
     ${CMAKE_SOURCE_DIR}/vc4/crt0.S
@@ -111,6 +118,9 @@ add_executable(
     src/stb.cpp
     src/tui.cpp
     ${rpi_extra_sources}
+
+    ${QPU_OBJECTS}
+    
 )
 add_dependencies(ff qpu_programs vpu_functions)
 
@@ -145,6 +155,7 @@ add_executable(
     src/tui.cpp
 
     ${rpi_extra_sources}
+    ${QPU_OBJECTS}
 )
 
 # includes
@@ -174,6 +185,7 @@ add_executable(
     src/tui.cpp
 
     ${rpi_extra_sources}
+    ${QPU_OBJECTS}
 )
 
 # includes

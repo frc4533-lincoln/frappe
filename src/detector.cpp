@@ -16,6 +16,12 @@
 #define offset32bit(x, y) (((x) << 2) + ((y) << 10))
 #define offset(x, y, z) (((x) << 1) + ((y) << (z)))
 
+// Object files from shader binaries are directly linked in to code
+extern const char  _binary_qpu_warp_bin_start,                      _binary_qpu_warp_bin_size;
+extern const char  _binary_qpu_shi_tomasi_opt_tiled_bin_start,      _binary_qpu_shi_tomasi_opt_tiled_bin_size;
+extern const char  _binary_qpu_shi_tomasi_scale_tiled_bin_start,    _binary_qpu_shi_tomasi_scale_tiled_bin_size;
+extern const char  _binary_qpu_suppress_opt_tiled_bin_start,        _binary_qpu_suppress_opt_tiled_bin_size;
+
 Detector::Detector(State &_state, int _width, int _height, int tc, int tr, int tw, int th)
 :   state       (_state),
     width       (_width),
@@ -43,11 +49,20 @@ Detector::Detector(State &_state, int _width, int _height, int tc, int tr, int t
     p_colour        = new Program(get_file("../shaders/vs_simple.glsl"), get_file("../shaders/colour.glsl"), "colour");
     dict            = new Dictionary(t_codes);
 
-    p_qpu_shi_tomasi    = new QPUprogram(state, "qpu_shi_tomasi_opt_tiled.bin", 0, 10, 15, 64, 32, 64);
-    p_qpu_shi_tomasi_scale  = new QPUprogram(state, "qpu_shi_tomasi_scale_tiled.bin", 33, 10, 15, 64, 32, 64, 1024);
-    //p_qpu_suppress      = new QPUprogram(state, "qpu_suppress_tiled.bin",   2, 10, 15, 64, 32, 64);
-    p_qpu_suppress      = new QPUprogram(state, "qpu_suppress_opt_tiled.bin",   2, 10, 15, 64, 32, 64);
-    p_qpu_warp          = new QPUprogram(state, "qpu_warp.bin", 16, 8, 4, 16, 16, 64);
+    //p_qpu_shi_tomasi    = new QPUprogram(state, "qpu_shi_tomasi_opt_tiled.bin", 0, 10, 15, 64, 32, 64);
+    //p_qpu_shi_tomasi_scale  = new QPUprogram(state, "qpu_shi_tomasi_scale_tiled.bin", 33, 10, 15, 64, 32, 64, 1024);
+    //p_qpu_suppress      = new QPUprogram(state, "qpu_suppress_opt_tiled.bin",   2, 10, 15, 64, 32, 64);
+    //p_qpu_warp          = new QPUprogram(state, "qpu_warp.bin", 16, 8, 4, 16, 16, 64);
+    
+    p_qpu_shi_tomasi        = new QPUprogram(state, (uint8_t*)&_binary_qpu_shi_tomasi_opt_tiled_bin_start, 
+                                                    (uint32_t)&_binary_qpu_shi_tomasi_opt_tiled_bin_size, 0, 10, 15, 64, 32, 64);
+    p_qpu_shi_tomasi_scale  = new QPUprogram(state, (uint8_t*)&_binary_qpu_shi_tomasi_scale_tiled_bin_start, 
+                                                    (uint32_t)&_binary_qpu_shi_tomasi_scale_tiled_bin_size, 33, 10, 15, 64, 32, 64, 1024);
+    p_qpu_suppress          = new QPUprogram(state, (uint8_t*)&_binary_qpu_suppress_opt_tiled_bin_start, 
+                                                    (uint32_t)&_binary_qpu_suppress_opt_tiled_bin_size,   2, 10, 15, 64, 32, 64);
+    p_qpu_warp              = new QPUprogram(state, (uint8_t*)&_binary_qpu_warp_bin_start, 
+                                                    (uint32_t)&_binary_qpu_warp_bin_size, 16, 8, 4, 16, 16, 64);
+
     p_vpu_functions     = new VPUprogram(state, "functions.elf");
 
     // Set up the uniforms that don't change

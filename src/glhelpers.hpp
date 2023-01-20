@@ -297,6 +297,7 @@ class QPUprogram
 {
 public:
     QPUprogram(State &_state, std::string bin_file, int _exu, int _tc, int _tr, int _w, int _h, int _mw, int _cs = 0);
+    QPUprogram(State &_state, uint8_t *start, uint32_t size, int _exu, int _tc, int _tr, int _w, int _h, int _mw, int _cs = 0);
     uint32_t execute(Texture &in, Texture &out, bool force_update = false, float scale_factor = 1.0, bool scaling = false);
     uint32_t execute_sc2(Texture &in, Texture &out, bool force_update = false, float scale_factor = 1.0, bool scaling = false);
     uint32_t execute_scaled(Texture &in, Texture &out, bool force_update = false, float scale_factor = 1.0, bool scaling = false);
