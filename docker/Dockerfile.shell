@@ -1,0 +1,18 @@
+# syntax=docker/dockerfile:1.3-labs
+# So we can use heredocs https://www.docker.com/blog/introduction-to-heredocs-in-dockerfiles/
+
+
+from cross
+run apt-get update && apt-get -y install unzip
+
+
+workdir /
+run cat <<EOF >shell
+#!/bin/bash
+cmd=\$1
+shift
+\$cmd "\$@"
+EOF
+run chmod +x shell
+workdir /data
+entrypoint ["/shell"]
