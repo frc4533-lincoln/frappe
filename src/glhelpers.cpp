@@ -616,6 +616,29 @@ VPUprogram::VPUprogram(State &_state, std::string elf_file)
     load_elf(elf_file.c_str(), virt_address);
     mem_unlock(state.mb, handle);
 }
+VPUprogram::VPUprogram(State &_state, uint8_t *start, uint32_t size)
+:  state(_state)
+{
+    // The linker script in ~/projects/rpi_experiments/vc4-toolchain/vc4-toolchain/prefix/vc4-elf/lib/vc4-sim/ld
+    // has a hardwired RAM size of 0x100000. The size here must match. crt0.S saves the
+    // sp from whatever OS is running on VC4 and moves the sp to the top of our region.
+    int msize = 0x100000;
+    // Get a handle a region of memory controlled by the VPU
+    handle = mem_alloc(state.mb, msize, 4096, MEM_FLAG_L1_NONALLOCATING);
+    // Lock memory buffer and return a bus address
+    bus_address = mem_lock(state.mb, handle);
+    // Map the memory into the virtual space 
+    virt_address = (uint8_t *)mapmem(BUS_TO_PHYS(bus_address), msize);
+#ifdef DBGMSG
+    printf( "bus:     %08x\n"
+            "phys:    %08x\n"
+            "virt:    %08x\n", bus_address, BUS_TO_PHYS(bus_address), virt_address);
+#endif
+    printf("Loading VPU program %x+%x\n", start, size);
+    memcpy(virt_address, start, size);
+    //load_elf(elf_file.c_str(), virt_address);
+    mem_unlock(state.mb, handle);
+}
 VPUprogram::~VPUprogram()
 {
 }

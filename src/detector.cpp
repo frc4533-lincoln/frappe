@@ -16,11 +16,13 @@
 #define offset32bit(x, y) (((x) << 2) + ((y) << 10))
 #define offset(x, y, z) (((x) << 1) + ((y) << (z)))
 
-// Object files from shader binaries are directly linked in to code
+// Object files from QPU shader binaries are directly linked in to code
 extern const char  _binary_qpu_warp_bin_start,                      _binary_qpu_warp_bin_size;
 extern const char  _binary_qpu_shi_tomasi_opt_tiled_bin_start,      _binary_qpu_shi_tomasi_opt_tiled_bin_size;
 extern const char  _binary_qpu_shi_tomasi_scale_tiled_bin_start,    _binary_qpu_shi_tomasi_scale_tiled_bin_size;
 extern const char  _binary_qpu_suppress_opt_tiled_bin_start,        _binary_qpu_suppress_opt_tiled_bin_size;
+// Object file from VPU functions binary
+extern const char  _binary_vpu_functions_bin_start,                 _binary_vpu_functions_bin_size;
 
 Detector::Detector(State &_state, int _width, int _height, int tc, int tr, int tw, int th)
 :   state       (_state),
@@ -53,6 +55,7 @@ Detector::Detector(State &_state, int _width, int _height, int tc, int tr, int t
     //p_qpu_shi_tomasi_scale  = new QPUprogram(state, "qpu_shi_tomasi_scale_tiled.bin", 33, 10, 15, 64, 32, 64, 1024);
     //p_qpu_suppress      = new QPUprogram(state, "qpu_suppress_opt_tiled.bin",   2, 10, 15, 64, 32, 64);
     //p_qpu_warp          = new QPUprogram(state, "qpu_warp.bin", 16, 8, 4, 16, 16, 64);
+    //p_vpu_functions     = new VPUprogram(state, "functions.elf");
     
     p_qpu_shi_tomasi        = new QPUprogram(state, (uint8_t*)&_binary_qpu_shi_tomasi_opt_tiled_bin_start, 
                                                     (uint32_t)&_binary_qpu_shi_tomasi_opt_tiled_bin_size, 0, 10, 15, 64, 32, 64);
@@ -63,7 +66,8 @@ Detector::Detector(State &_state, int _width, int _height, int tc, int tr, int t
     p_qpu_warp              = new QPUprogram(state, (uint8_t*)&_binary_qpu_warp_bin_start, 
                                                     (uint32_t)&_binary_qpu_warp_bin_size, 16, 8, 4, 16, 16, 64);
 
-    p_vpu_functions     = new VPUprogram(state, "functions.elf");
+    p_vpu_functions         = new VPUprogram(state, (uint8_t*)&_binary_vpu_functions_bin_start, 
+                                                    (uint32_t)&_binary_vpu_functions_bin_size);
 
     // Set up the uniforms that don't change
     int potw = t_buffer[0].buffer_width;
@@ -458,28 +462,6 @@ MarkerVec Detector::detect(Texture &input)
     decode_vpu();
     //decode_hamming();
 
-
-    // Find the smallest edge length of all candidates
-    // if (mv.size())
-    // {
-    //     min_length_candidate = 100000000;
-    //     for(auto &m : mv)
-    //     {
-    //         for(int i = 0; i < 4; i++)
-    //         {
-    //             auto dx = m.p[i].x - m.p[(i + 1) % 4].x;
-    //             auto dy = m.p[i].y - m.p[(i + 1) % 4].y;
-    //             float len = dx * dx + dy * dy;
-    //             if (len < min_length_candidate)
-    //                 min_length_candidate = len;
-    //         }
-    //     }
-    //     min_length_candidate = sqrt(min_length_candidate);
-    // }
-    // else
-    // {
-    //     min_length_candidate = 0;
-    // }
 
     // Remove any candidates that have not been identified
     mv_pre_elim = mv;

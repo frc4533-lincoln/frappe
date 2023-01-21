@@ -96,16 +96,18 @@ set(VPU_SOURCES
     ${CMAKE_SOURCE_DIR}/vc4/crti.S
     ${CMAKE_SOURCE_DIR}/vc4/crtn.S
     ${CMAKE_SOURCE_DIR}/vc4/helpers.S
-    ${CMAKE_SOURCE_DIR}/vc4/functions.c
+    ${CMAKE_SOURCE_DIR}/vc4/vpu_functions.c
 )
 
 add_custom_command(
-    OUTPUT functions.elf
+    OUTPUT vpu_functions.o
     DEPENDS ${VPU_SOURCES}
-    COMMAND ${VC4_TOOLPATH}/vc4-elf-gcc -o ${CMAKE_CURRENT_BINARY_DIR}/functions.elf -O3 -T vc4-sim.ld -nostartfiles -fPIC -static ${VPU_SOURCES}
+    COMMAND ${VC4_TOOLPATH}/vc4-elf-gcc -o ${CMAKE_CURRENT_BINARY_DIR}/vpu_functions.elf -O3 -T vc4-sim.ld -nostartfiles -fPIC -static ${VPU_SOURCES}
+    COMMAND ${VC4_TOOLPATH}/vc4-elf-objcopy -O binary vpu_functions.elf vpu_functions.bin
+    COMMAND ${TOOLCHAIN_LD} -r -b binary -o vpu_functions.o vpu_functions.bin 
 )
 add_custom_target(vpu_functions
-    DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/functions.elf
+    DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/vpu_functions.o
 )
 
 
@@ -120,7 +122,7 @@ add_executable(
     ${rpi_extra_sources}
 
     ${QPU_OBJECTS}
-    
+    vpu_functions.o    
 )
 add_dependencies(ff qpu_programs vpu_functions)
 
@@ -156,6 +158,7 @@ add_executable(
 
     ${rpi_extra_sources}
     ${QPU_OBJECTS}
+    vpu_functions.o    
 )
 
 # includes
@@ -186,6 +189,7 @@ add_executable(
 
     ${rpi_extra_sources}
     ${QPU_OBJECTS}
+    vpu_functions.o    
 )
 
 # includes
