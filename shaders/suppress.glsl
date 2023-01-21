@@ -1,3 +1,4 @@
+R"glsl(
 #version 100
 #define PI 3.14159265
 precision mediump float;
@@ -114,3 +115,4 @@ void main()
     // }
 
 }
+)glsl"

@@ -1,3 +1,4 @@
+R"glsl(
 #version 100
 precision mediump float;
 precision mediump sampler2D;
@@ -12,4 +13,6 @@ void main()
     float b = float((c.z == 0.0) && (c.x > 0.0));
     gl_FragColor = vec4(r, g, b, 1.0);
 }
+)glsl"
+
 

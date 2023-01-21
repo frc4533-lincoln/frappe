@@ -1,3 +1,4 @@
+R"glsl(
 #version 100
 #define PI 3.14159265
 precision highp float;
@@ -59,3 +60,4 @@ void main()
     gl_FragColor = vec4(g, dth, 0.25 * gx + 0.5, 0.25 * gy + 0.5);
 }
 
+)glsl"

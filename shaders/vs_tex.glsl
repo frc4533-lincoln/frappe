@@ -1,3 +1,4 @@
+R"glsl(
 #version 100
 precision mediump float;
 
@@ -9,3 +10,4 @@ void main()
     gl_Position = v_pos;
     tex_coord   = v_tex;
 }
+)glsl"

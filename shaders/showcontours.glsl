@@ -1,3 +1,4 @@
+R"glsl(
 #version 100
 precision mediump float;
 precision mediump sampler2D;
@@ -13,3 +14,5 @@ void main()
     //float g = 0.2 * float((c.x > 0.0) || (c.y > 0.0));
     gl_FragColor = vec4(notcontour, contour, contour, 1.0);
 }
+)glsl"
+

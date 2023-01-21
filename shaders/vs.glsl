@@ -1,3 +1,4 @@
+R"glsl(
 #version 100
 
 precision mediump float;
@@ -21,3 +22,4 @@ void main()
     tc7 = vec2(v_tex.x       , v_tex.y - vpix);
     tc8 = vec2(v_tex.x + hpix, v_tex.y - vpix);
 }
+)glsl"

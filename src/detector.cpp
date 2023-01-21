@@ -24,6 +24,39 @@ extern const char  _binary_qpu_suppress_opt_tiled_bin_start,        _binary_qpu_
 // Object file from VPU functions binary
 extern const char  _binary_vpu_functions_bin_start,                 _binary_vpu_functions_bin_size;
 
+
+// GLSL shader strings
+const std::string vs_glsl = 
+#include "vs.glsl"
+;
+const std::string vs_tex_glsl =
+#include "vs_tex.glsl"
+;
+const std::string vs_simple_glsl =
+#include "vs_simple.glsl"
+;
+const std::string sobel_shi_tomasi_glsl = 
+#include "sobel_shi_tomasi.glsl"
+;
+const std::string suppress_glsl = 
+#include "suppress.glsl"
+;
+const std::string null_glsl = 
+#include "null.glsl"
+;
+const std::string showcorners_glsl = 
+#include "showcorners.glsl"
+;
+const std::string showcontours_glsl = 
+#include "showcontours.glsl"
+;
+const std::string colour_glsl = 
+#include "colour.glsl"
+;
+
+
+
+
 Detector::Detector(State &_state, int _width, int _height, int tc, int tr, int tw, int th)
 :   state       (_state),
     width       (_width),
@@ -42,12 +75,12 @@ Detector::Detector(State &_state, int _width, int _height, int tc, int tr, int t
 
 
 {
-    p_shi_tomasi    = new Program(get_file("../shaders/vs.glsl"), get_file("../shaders/sobel_shi_tomasi.glsl"), "shi_tomasi");
-    p_suppress      = new Program(get_file("../shaders/vs.glsl"), get_file("../shaders/suppress.glsl"), "suppress");
-    p_null          = new Program(get_file("../shaders/vs.glsl"), get_file("../shaders/null.glsl"), "");
-    p_showcorners   = new Program(get_file("../shaders/vs_tex.glsl"), get_file("../shaders/showcorners.glsl"), "showcorners");
-    p_showcontours  = new Program(get_file("../shaders/vs_tex.glsl"), get_file("../shaders/showcontours.glsl"), "showcontours");
-    p_colour        = new Program(get_file("../shaders/vs_simple.glsl"), get_file("../shaders/colour.glsl"), "colour");
+    p_shi_tomasi    = new Program(vs_glsl.c_str(), sobel_shi_tomasi_glsl.c_str(), "shi_tomasi");
+    p_suppress      = new Program(vs_glsl.c_str(), suppress_glsl.c_str(), "suppress");
+    p_null          = new Program(vs_glsl.c_str(), null_glsl.c_str(), "");
+    p_showcorners   = new Program(vs_tex_glsl.c_str(), showcorners_glsl.c_str(), "showcorners");
+    p_showcontours  = new Program(vs_tex_glsl.c_str(), showcontours_glsl.c_str(), "showcontours");
+    p_colour        = new Program(vs_simple_glsl.c_str(), colour_glsl.c_str(), "colour");
     dict            = new Dictionary(t_codes);
 
     //p_qpu_shi_tomasi    = new QPUprogram(state, "qpu_shi_tomasi_opt_tiled.bin", 0, 10, 15, 64, 32, 64);
