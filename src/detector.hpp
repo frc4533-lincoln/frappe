@@ -146,16 +146,12 @@ public:
     Texture     t_decode;
     int         width, height;
     Program     *p_shi_tomasi;
-    Program     *p_shi_tomasi2;
     Program     *p_suppress;
-    Program     *p_threshold;
-    Program     *p_ada_thresh;
     Program     *p_null;
     Program     *p_showcorners;
     Program     *p_showcontours;
     Program     *p_camera;
     Program     *p_colour;
-    Program     *p_downscale;
     QPUprogram  *p_qpu_blit;
     QPUprogram  *p_qpu_shi_tomasi;
     QPUprogram  *p_qpu_shi_tomasi_scale;

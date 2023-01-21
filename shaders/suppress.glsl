@@ -110,7 +110,7 @@ void main()
 
         float cnr = float(edge && (l1 > corner_thr));
 
-        gl_FragColor = vec4(float(edge), 0.0, cnr, l1);
+        gl_FragColor = vec4(float(edge), 0.0, cnr, 0.0);
     // }
 
 }

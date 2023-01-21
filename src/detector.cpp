@@ -38,7 +38,6 @@ Detector::Detector(State &_state, int _width, int _height, int tc, int tr, int t
     t_codes (   Texture(_state, 64, 64, false)),
     t_decode(   Texture(_state, 64, 64, false)),
 
-
     m_fid   (   Mesh({"v_pos", "v_tex"}, {3, 2}))
 
 

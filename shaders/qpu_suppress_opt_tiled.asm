@@ -366,7 +366,7 @@ mov     t0s,        r0                                                          
 
 
 
-    # // Extract maximum eigenvalue. This falls out as solution to quadratic
+    # // Extract minimum eigenvalue. This falls out as solution to quadratic
     # float l1 = a + c - sqrt((a - c) * (a - c) + b * b);
     fsub        r0,         r0,         r2;     fmul        r1,         r1,         r1
     fmul        r0,         r0,         r0;     mov         r3,         tb7

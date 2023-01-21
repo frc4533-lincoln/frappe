@@ -399,223 +399,223 @@ void Program::set_uniform(std::string name, std::vector<float> v)
 }
 
 
-const char *ELF_SECTION_TYPE[] = {
-    "NULL",
-    "PROGBITS",
-    "SYMTAB",
-    "STRTAB",
-    "RELA",
-    "HASH",
-    "DYNAMIC",
-    "NOTE",
-    "NOBITS",
-    "REL",
-    "",
-    "DYNSYM"
-};
+// const char *ELF_SECTION_TYPE[] = {
+//     "NULL",
+//     "PROGBITS",
+//     "SYMTAB",
+//     "STRTAB",
+//     "RELA",
+//     "HASH",
+//     "DYNAMIC",
+//     "NOTE",
+//     "NOBITS",
+//     "REL",
+//     "",
+//     "DYNSYM"
+// };
 
 
-void dump_section_table(Elf32_Shdr *elf_section_headers, size_t section_count, char *section_strtab) {
-    printf("IND |                 MAME |     TYPE | FLAG | OFFSET |   SIZE | ADDRESS  |\n");
-    printf("----+----------------------+----------+------+--------+--------+----------+\n");
-    for (size_t index = 0; index < section_count; index++) {
-        Elf32_Shdr *section = (elf_section_headers + index);
-        char *name = (section_strtab + section->sh_name);
+// void dump_section_table(Elf32_Shdr *elf_section_headers, size_t section_count, char *section_strtab) {
+//     printf("IND |                 MAME |     TYPE | FLAG | OFFSET |   SIZE | ADDRESS  |\n");
+//     printf("----+----------------------+----------+------+--------+--------+----------+\n");
+//     for (size_t index = 0; index < section_count; index++) {
+//         Elf32_Shdr *section = (elf_section_headers + index);
+//         char *name = (section_strtab + section->sh_name);
 
-        printf("%3zu | ", index);
-        printf("%20s | ", name);
-        printf("%8s | ", ELF_SECTION_TYPE[section->sh_type]);
-        printf("%c%c%c%c | ",
-            (section->sh_flags & SHF_WRITE) ? 'W' : ' ',
-            (section->sh_flags & SHF_ALLOC) ? 'A' : ' ',
-            (section->sh_flags & SHF_EXECINSTR) ? 'X' : ' ',
-            (section->sh_flags & ~0x7) ? '?' : ' '
-        );
-        printf("%6lx | ", section->sh_offset);
-        printf("%6lx | ", section->sh_size);
-        printf("%.8lx | ", section->sh_addr);
-        printf("\n");
-    }
-}
+//         printf("%3zu | ", index);
+//         printf("%20s | ", name);
+//         printf("%8s | ", ELF_SECTION_TYPE[section->sh_type]);
+//         printf("%c%c%c%c | ",
+//             (section->sh_flags & SHF_WRITE) ? 'W' : ' ',
+//             (section->sh_flags & SHF_ALLOC) ? 'A' : ' ',
+//             (section->sh_flags & SHF_EXECINSTR) ? 'X' : ' ',
+//             (section->sh_flags & ~0x7) ? '?' : ' '
+//         );
+//         printf("%6lx | ", section->sh_offset);
+//         printf("%6lx | ", section->sh_size);
+//         printf("%.8lx | ", section->sh_addr);
+//         printf("\n");
+//     }
+// }
 
-void load_elf(const char *fname, uint8_t *program)
-{
-    const char *object_file_name = fname;
-    FILE *object_file = fopen(object_file_name, "rb");
-    if (object_file == NULL) {
-        fprintf(stderr, "Unable to open file %s\n", fname);
-        exit(1);
-    }
+// void load_elf(const char *fname, uint8_t *program)
+// {
+//     const char *object_file_name = fname;
+//     FILE *object_file = fopen(object_file_name, "rb");
+//     if (object_file == NULL) {
+//         fprintf(stderr, "Unable to open file %s\n", fname);
+//         exit(1);
+//     }
 
-    Elf32_Ehdr *elf_header = (Elf32_Ehdr *)malloc(sizeof(Elf32_Ehdr));
-    fread(elf_header, sizeof(Elf32_Ehdr), 1, object_file);
-    if (    elf_header->e_ident[0] == 0x7f
-        &&  elf_header->e_ident[1] == 'E'
-        &&  elf_header->e_ident[2] == 'L'
-        &&  elf_header->e_ident[3] == 'F'
-    )
-    {
-        //printf("Correct elf magic\n");
-    }
-    else
-    {
-        printf("Not a valid ELF file\n");
-        exit(1);
-    }
-#ifdef DBGMSG
-    printf("class:%s data:%s version:%s osabi:%02x abiver:%02x\n",
-        elf_header->e_ident[4] == ELFCLASS32 ? "32bit" : "64bit", 
-        elf_header->e_ident[5] == ELFDATA2LSB ? "LE" : "BE", 
-        elf_header->e_ident[6] == EV_CURRENT ? "Current" : "Invalid", 
-        elf_header->e_ident[7], elf_header->e_ident[8]);
-#endif
+//     Elf32_Ehdr *elf_header = (Elf32_Ehdr *)malloc(sizeof(Elf32_Ehdr));
+//     fread(elf_header, sizeof(Elf32_Ehdr), 1, object_file);
+//     if (    elf_header->e_ident[0] == 0x7f
+//         &&  elf_header->e_ident[1] == 'E'
+//         &&  elf_header->e_ident[2] == 'L'
+//         &&  elf_header->e_ident[3] == 'F'
+//     )
+//     {
+//         //printf("Correct elf magic\n");
+//     }
+//     else
+//     {
+//         printf("Not a valid ELF file\n");
+//         exit(1);
+//     }
+// #ifdef DBGMSG
+//     printf("class:%s data:%s version:%s osabi:%02x abiver:%02x\n",
+//         elf_header->e_ident[4] == ELFCLASS32 ? "32bit" : "64bit", 
+//         elf_header->e_ident[5] == ELFDATA2LSB ? "LE" : "BE", 
+//         elf_header->e_ident[6] == EV_CURRENT ? "Current" : "Invalid", 
+//         elf_header->e_ident[7], elf_header->e_ident[8]);
+// #endif
 
-    if (elf_header->e_type != ET_EXEC) 
-    {
-        printf("Not executable\n");
-        exit(1);
-    }
+//     if (elf_header->e_type != ET_EXEC) 
+//     {
+//         printf("Not executable\n");
+//         exit(1);
+//     }
 
-    // Setup variable for the section headers
-    size_t section_count = elf_header->e_shnum;
-    size_t section_header_size = sizeof(Elf32_Shdr);
-    Elf32_Shdr *elf_section_headers = (Elf32_Shdr *)malloc(section_header_size * section_count);
-    // Read section headers from the file
-    fseek(object_file, elf_header->e_shoff, SEEK_SET);
-    fread(elf_section_headers, section_header_size, section_count, object_file);
+//     // Setup variable for the section headers
+//     size_t section_count = elf_header->e_shnum;
+//     size_t section_header_size = sizeof(Elf32_Shdr);
+//     Elf32_Shdr *elf_section_headers = (Elf32_Shdr *)malloc(section_header_size * section_count);
+//     // Read section headers from the file
+//     fseek(object_file, elf_header->e_shoff, SEEK_SET);
+//     fread(elf_section_headers, section_header_size, section_count, object_file);
 
-    int symtab = 0;
-    int shstrtab = elf_header->e_shstrndx;
-    int strtab = 0;
-    for (int idx = 0; idx < section_count; idx++)
-    {
-        Elf32_Shdr *section = elf_section_headers + idx;
-        //printf("idx:%d type:%d\n", idx, section->sh_type);
-        // If this section should allocate memory and is bigger than 0
-        if ((section->sh_flags & SHF_ALLOC) && section->sh_size > 0) 
-        {
-            char *mem = (char *)malloc(section->sh_size);
+//     int symtab = 0;
+//     int shstrtab = elf_header->e_shstrndx;
+//     int strtab = 0;
+//     for (int idx = 0; idx < section_count; idx++)
+//     {
+//         Elf32_Shdr *section = elf_section_headers + idx;
+//         //printf("idx:%d type:%d\n", idx, section->sh_type);
+//         // If this section should allocate memory and is bigger than 0
+//         if ((section->sh_flags & SHF_ALLOC) && section->sh_size > 0) 
+//         {
+//             char *mem = (char *)malloc(section->sh_size);
 
-            if (section->sh_type == SHT_PROGBITS) {
-                // Read data from the file
-                fseek(object_file, section->sh_offset, SEEK_SET);
-                fread(mem, section->sh_size, 1, object_file);
-            } else if (section->sh_type == SHT_NOBITS) {
-                // Section is empty, so fill with zeros
-                memset(mem, '\0', section->sh_size);
-            }
-            //printf("alloc addr %08x type %d\n", section->sh_addr, section->sh_type);
-            section->sh_link = (uint32_t)(size_t) mem;
-        }
+//             if (section->sh_type == SHT_PROGBITS) {
+//                 // Read data from the file
+//                 fseek(object_file, section->sh_offset, SEEK_SET);
+//                 fread(mem, section->sh_size, 1, object_file);
+//             } else if (section->sh_type == SHT_NOBITS) {
+//                 // Section is empty, so fill with zeros
+//                 memset(mem, '\0', section->sh_size);
+//             }
+//             //printf("alloc addr %08x type %d\n", section->sh_addr, section->sh_type);
+//             section->sh_link = (uint32_t)(size_t) mem;
+//         }
 
-        // Load symbol and string tables from the file
-        if (section->sh_type == SHT_SYMTAB || section->sh_type == SHT_STRTAB) 
-        {
-        //printf("idx:%d type:%d\n", idx, section->sh_type);
+//         // Load symbol and string tables from the file
+//         if (section->sh_type == SHT_SYMTAB || section->sh_type == SHT_STRTAB) 
+//         {
+//         //printf("idx:%d type:%d\n", idx, section->sh_type);
 
-            if (section->sh_type == SHT_SYMTAB)
-                symtab = idx;
-            else if (idx != shstrtab)
-                strtab = idx;
+//             if (section->sh_type == SHT_SYMTAB)
+//                 symtab = idx;
+//             else if (idx != shstrtab)
+//                 strtab = idx;
 
-            Elf32_Sym *table = (Elf32_Sym *)malloc(section->sh_size);
+//             Elf32_Sym *table = (Elf32_Sym *)malloc(section->sh_size);
 
-            fseek(object_file, section->sh_offset, SEEK_SET);
-            fread(table, section->sh_size, 1, object_file);
+//             fseek(object_file, section->sh_offset, SEEK_SET);
+//             fread(table, section->sh_size, 1, object_file);
 
-            //printf("idx %d tab offset %08x size %08x type %d %08x link %08x\n", idx, 
-            //    section->sh_offset, section->sh_size, section->sh_type, table, section->sh_link);
-            section->sh_link = (uint32_t)(size_t) table;
-        }
-    }    
+//             //printf("idx %d tab offset %08x size %08x type %d %08x link %08x\n", idx, 
+//             //    section->sh_offset, section->sh_size, section->sh_type, table, section->sh_link);
+//             section->sh_link = (uint32_t)(size_t) table;
+//         }
+//     }    
 
-#ifdef DBGMSG
-    printf("shstrtab:%d symtab:%d strtab:%d\n", shstrtab, symtab, strtab);
-#endif
-    Elf32_Shdr *section = elf_section_headers + symtab;
-    int num_entries = section->sh_size / section->sh_entsize;
-    uint32_t fbss = 0;
-    uint32_t ebss = 0;
-    uint32_t init = 0;
-    uint32_t fini = 0;
-    for (int idx = 0; idx < num_entries; idx++)
-    {
-        Elf32_Sym *entry = (Elf32_Sym*)section->sh_link + idx;
-        char *name = (char*)elf_section_headers[strtab].sh_link + entry->st_name;
-        uint32_t value = entry->st_value;
-        //printf("idx:%d %s %08x\n", idx, name, value);
-        if (!strcmp(name, "_fbss")) fbss = value;
-        if (!strcmp(name, "_ebss")) ebss = value;
-        if (!strcmp(name, "_init")) init = value;
-        if (!strcmp(name, "_fini")) fini = value;
-    }
+// #ifdef DBGMSG
+//     printf("shstrtab:%d symtab:%d strtab:%d\n", shstrtab, symtab, strtab);
+// #endif
+//     Elf32_Shdr *section = elf_section_headers + symtab;
+//     int num_entries = section->sh_size / section->sh_entsize;
+//     uint32_t fbss = 0;
+//     uint32_t ebss = 0;
+//     uint32_t init = 0;
+//     uint32_t fini = 0;
+//     for (int idx = 0; idx < num_entries; idx++)
+//     {
+//         Elf32_Sym *entry = (Elf32_Sym*)section->sh_link + idx;
+//         char *name = (char*)elf_section_headers[strtab].sh_link + entry->st_name;
+//         uint32_t value = entry->st_value;
+//         //printf("idx:%d %s %08x\n", idx, name, value);
+//         if (!strcmp(name, "_fbss")) fbss = value;
+//         if (!strcmp(name, "_ebss")) ebss = value;
+//         if (!strcmp(name, "_init")) init = value;
+//         if (!strcmp(name, "_fini")) fini = value;
+//     }
 
-    if (fbss == 0 || ebss == 0 || init == 0 || fini == 0)
-    {
-        printf("Didn't find bss symbol! fbss:%d ebss:%d init:%d fini:%d\n", 
-            fbss, ebss, init, fini);
-        exit(1);
-    }
-#ifdef DBGMSG
-    dump_section_table(elf_section_headers, section_count, 
-        (char *) elf_section_headers[shstrtab].sh_link);
+//     if (fbss == 0 || ebss == 0 || init == 0 || fini == 0)
+//     {
+//         printf("Didn't find bss symbol! fbss:%d ebss:%d init:%d fini:%d\n", 
+//             fbss, ebss, init, fini);
+//         exit(1);
+//     }
+// #ifdef DBGMSG
+//     dump_section_table(elf_section_headers, section_count, 
+//         (char *) elf_section_headers[shstrtab].sh_link);
 
-    printf("fbss: %08x ebss:%08x\n", fbss, ebss);    
-#endif
+//     printf("fbss: %08x ebss:%08x\n", fbss, ebss);    
+// #endif
 
-    // Put the text and data segments into memory
-    int memptr = 0;
-    for (int idx = 0; idx < section_count; idx++)
-    {
-        Elf32_Shdr *section = elf_section_headers + idx;
-        char *section_name = (char*)elf_section_headers[shstrtab].sh_link + section->sh_name;
-        if (    !strcmp(section_name, ".text") 
-            ||  !strcmp(section_name, ".rodata") 
-            ||  !strcmp(section_name, ".data")
-            ||  !strcmp(section_name, ".bss")
-            )
-        {
-            //printf("%-10s addr:%08x link:%0x8 size:%08x\n", section_name, 
-            //    program + section->sh_addr, (char *)section->sh_link, section->sh_size);
-            memcpy(program + section->sh_addr, (char *)section->sh_link, section->sh_size);
-        }
-        //printf("%d\n", idx);
-    }
+//     // Put the text and data segments into memory
+//     int memptr = 0;
+//     for (int idx = 0; idx < section_count; idx++)
+//     {
+//         Elf32_Shdr *section = elf_section_headers + idx;
+//         char *section_name = (char*)elf_section_headers[shstrtab].sh_link + section->sh_name;
+//         if (    !strcmp(section_name, ".text") 
+//             ||  !strcmp(section_name, ".rodata") 
+//             ||  !strcmp(section_name, ".data")
+//             ||  !strcmp(section_name, ".bss")
+//             )
+//         {
+//             //printf("%-10s addr:%08x link:%0x8 size:%08x\n", section_name, 
+//             //    program + section->sh_addr, (char *)section->sh_link, section->sh_size);
+//             memcpy(program + section->sh_addr, (char *)section->sh_link, section->sh_size);
+//         }
+//         //printf("%d\n", idx);
+//     }
 
-#ifdef DBGMSG
-    for (int i = 0; i < 0x100; i++)
-    {
-        if (i % 32 == 0)
-            printf("%08x  ", i);
-        printf("%02x ", program[i]);
-        if (i % 32 == 31)
-            printf("\n");
-    }    
-#endif
-}
+// #ifdef DBGMSG
+//     for (int i = 0; i < 0x100; i++)
+//     {
+//         if (i % 32 == 0)
+//             printf("%08x  ", i);
+//         printf("%02x ", program[i]);
+//         if (i % 32 == 31)
+//             printf("\n");
+//     }    
+// #endif
+// }
 
-#define BUS_TO_PHYS(x) ((x)&~0xC0000000)
-VPUprogram::VPUprogram(State &_state, std::string elf_file)
-:  state(_state)
-{
-    // The linker script in ~/projects/rpi_experiments/vc4-toolchain/vc4-toolchain/prefix/vc4-elf/lib/vc4-sim/ld
-    // has a hardwired RAM size of 0x100000. The size here must match. crt0.S saves the
-    // sp from whatever OS is running on VC4 and moves the sp to the top of our region.
-    int size = 0x100000;
-    // Get a handle a region of memory controlled by the VPU
-    handle = mem_alloc(state.mb, size, 4096, MEM_FLAG_L1_NONALLOCATING);
-    // Lock memory buffer and return a bus address
-    bus_address = mem_lock(state.mb, handle);
-    // Map the memory into the virtual space 
-    virt_address = (uint8_t *)mapmem(BUS_TO_PHYS(bus_address), size);
-#ifdef DBGMSG
-    printf( "bus:     %08x\n"
-            "phys:    %08x\n"
-            "virt:    %08x\n", bus_address, BUS_TO_PHYS(bus_address), virt_address);
-#endif
-    load_elf(elf_file.c_str(), virt_address);
-    mem_unlock(state.mb, handle);
-}
+// #define BUS_TO_PHYS(x) ((x)&~0xC0000000)
+// VPUprogram::VPUprogram(State &_state, std::string elf_file)
+// :  state(_state)
+// {
+//     // The linker script in ~/projects/rpi_experiments/vc4-toolchain/vc4-toolchain/prefix/vc4-elf/lib/vc4-sim/ld
+//     // has a hardwired RAM size of 0x100000. The size here must match. crt0.S saves the
+//     // sp from whatever OS is running on VC4 and moves the sp to the top of our region.
+//     int size = 0x100000;
+//     // Get a handle a region of memory controlled by the VPU
+//     handle = mem_alloc(state.mb, size, 4096, MEM_FLAG_L1_NONALLOCATING);
+//     // Lock memory buffer and return a bus address
+//     bus_address = mem_lock(state.mb, handle);
+//     // Map the memory into the virtual space 
+//     virt_address = (uint8_t *)mapmem(BUS_TO_PHYS(bus_address), size);
+// #ifdef DBGMSG
+//     printf( "bus:     %08x\n"
+//             "phys:    %08x\n"
+//             "virt:    %08x\n", bus_address, BUS_TO_PHYS(bus_address), virt_address);
+// #endif
+//     load_elf(elf_file.c_str(), virt_address);
+//     mem_unlock(state.mb, handle);
+// }
 VPUprogram::VPUprogram(State &_state, uint8_t *start, uint32_t size)
 :  state(_state)
 {
