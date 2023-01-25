@@ -81,6 +81,77 @@ do_bandwidth_test:
         rts
         
 
+
+.global do_y_copy
+do_y_copy:
+        ; Copy Y bytes from camera buffer with 640x480x8 resolution, 
+        ; to 1024x512x32 RGBA buffer
+        ; r0    src
+        ; r1    dst
+        ;
+        ; Work on 64x32 pixel tiles, with 10x15 tiles over whole frame
+        stm         r6-r8,         (--sp)
+        v32mov      HY(32++,0), 0           REP32
+
+        mov         r8,         15
+        add         r2,         r0,     640*479
+2:
+        mov         r4,         10
+        mov         r3,         -640
+        mov         r5,         4096
+    0:
+            ; load 64x32 pixels
+            v32ld       HY(0++,0),  (r2+=r3)    REP32
+
+            mov         r6,         0
+            mov         r7,         0
+        1:
+                v32mov      VY(32,0)+r6,   V(0,0)+r7
+                v32mov      VY(32,1)+r6,   V(0,16)+r7
+                v32mov      VY(32,2)+r6,   V(0,32)+r7 
+                v32mov      VY(32,3)+r6,   V(0,48)+r7
+                v32mov      VY(48,0)+r6,   V(16,0)+r7
+                v32mov      VY(48,1)+r6,   V(16,16)+r7
+                v32mov      VY(48,2)+r6,   V(16,32)+r7 
+                v32mov      VY(48,3)+r6,   V(16,48)+r7
+                add         r7,         1
+                addcmpblt   r6, 4,  16, 1b
+                v32st       HY(32++,0), (r1+=r5)    REP32
+                add         r1,         64
+                mov         r6,         0
+                addcmpblt   r7, 0,  16, 1b
+
+            add         r2,         64
+            addcmpbgt   r4, -1, 0,  0b        
+        
+        ; move the dest pointer forward by 32 lines, minus one row of tiles
+        add         r1,     32*4096-2560
+        ; move src pointer forward by 31 lines
+        add         r2,     -33*640 
+        addcmpbgt   r8, -1, 0,  2b
+
+
+
+
+        ldm         r6-r8,      (sp++)
+        rts
+
+// .global do_y_copy
+// do_y_copy:
+//         ; Copy Y bytes from camera buffer with 640x480x8 resolution, 
+//         ; to 1024x512x32 RGBA buffer
+//         ; r0    src
+//         ; r1    dst
+//         ;
+//         ; Work on 64x32 pixel tiles, with 10x15 tiles over whole frame
+
+//         mov         r2,         64
+//         v32ld       HY(0++,0),  (r0+=r2)    REP32
+//         v32mov      HY(32++,0), 0           REP32
+
+
+//         rts
+
 .global do_block_empty_test
 do_block_empty_test:
         ; Iterate over buffer, marking all 16x16 blocks that have any pixels

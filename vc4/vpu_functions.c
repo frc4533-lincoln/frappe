@@ -14,6 +14,7 @@ uint32_t do_hamming_dist_no_load(uint32_t, uint32_t, uint32_t);
 uint32_t do_block_empty_test(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 uint32_t do_extract_channel(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
 uint32_t do_scale(uint32_t, uint32_t, uint32_t, uint32_t, uint32_t);
+uint32_t do_y_copy(uint32_t, uint32_t);
 
 uint32_t dump_vrf(uint32_t);
 
@@ -168,6 +169,17 @@ uint32_t main(uint32_t r0, uint32_t r1, uint32_t r2, uint32_t r3, uint32_t r4, u
 
             do_bandwidth_test(src, r2, r3);
 
+            break;
+        }
+        case 8: // VPU_CAM_Y_COPY
+        {
+            // Copy Y (luminance) from camera buffer and expand to RGBA in
+            // input texture buffer
+            //  r1  source buffer
+            //  r2  dest buffer
+            uint32_t src     = (r1 & ~0xc0000000) | (cache << 30);
+            uint32_t dst     = (r2 & ~0xc0000000) | (cache << 30);
+            do_y_copy(src, dst);
             break;
         }
     }

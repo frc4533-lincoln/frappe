@@ -369,7 +369,7 @@ static void gcs_onCameraOutput(MMAL_PORT_T *port, MMAL_BUFFER_HEADER_T *buffer)
 			gcs->curFrameBuffer = NULL;
 			// On drop frame
 		}
-        printf("gcs set new frame\n");
+        //printf("gcs set new frame\n");
 
 		// Set the newest camera frame
 		gcs->curFrameBuffer = buffer;

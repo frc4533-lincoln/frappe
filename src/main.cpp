@@ -168,7 +168,7 @@ int main(int argc, char **argv)
 
     // Initial pass to warm caches
     MarkerVec mv;
-    mv = detector.detect(t_image);
+    //mv = detector.detect(t_image);
     while (!state.window_should_close())
     {
 #ifdef TUI
@@ -177,23 +177,11 @@ int main(int argc, char **argv)
 #endif
 
 
-        // If we are using the camera, copy the frame into the input buffer
 #ifdef CAMERA
         t_camera.get_cam_frame();
-        t_camera.dump_file("t1.bin");
-        exit(1);
-        // render_pass(state.fbo, quad_yflip, p_camera, t_camera, t_image);
-        // glFinish();
-#endif
 
-        //----------------------------
-        //set_time();
-
-
-        // Run the detector
-#ifdef CAMERA
         mv = detector.detect(t_camera);
-        // mv = detector.detect(t_image);
+        //mv = detector.detect(t_image);
 #else
         mv = detector.detect(t_image);
 #endif
@@ -202,7 +190,7 @@ int main(int argc, char **argv)
         detector.calculate_extrinsics(40.0);
 
         // Render to screen
-        detector.render(t_image, true);
+        detector.render(true);
 
 
         int total = 0;

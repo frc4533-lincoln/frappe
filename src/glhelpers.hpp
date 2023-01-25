@@ -106,7 +106,7 @@ public:
         uint64_t d = ts.tv_sec * 1000000 + ts.tv_nsec / 1000;
         int delta = d - t0;
         if (verbose) printf("diff:%llu %llu %d\n", d, t0, delta);
-        if (reset) t0 = d;
+        if (reset) t0 = t = d;
         return delta;
     }
 private:
@@ -309,10 +309,10 @@ class QPUprogram
 public:
     QPUprogram(State &_state, std::string bin_file, int _exu, int _tc, int _tr, int _w, int _h, int _mw, int _cs = 0);
     QPUprogram(State &_state, uint8_t *start, uint32_t size, int _exu, int _tc, int _tr, int _w, int _h, int _mw, int _cs = 0);
-    uint32_t execute(Texture &in, Texture &out, bool force_update = false, float scale_factor = 1.0, bool scaling = false);
-    uint32_t execute_sc2(Texture &in, Texture &out, bool force_update = false, float scale_factor = 1.0, bool scaling = false);
+    uint32_t execute(Texture &in, Texture &out, bool force_update = false);
+    uint32_t execute_sc2(Texture &in, Texture &out, bool force_update = false, float scale_factor = 1.0);
     uint32_t execute_scaled(Texture &in, Texture &out, bool force_update = false, float scale_factor = 1.0, bool scaling = false);
-    uint32_t execute(Texture &in, Texture &out, int owidth, int oheight, int ostride);
+    // uint32_t execute(Texture &in, Texture &out, int owidth, int oheight, int ostride);
     uint32_t execute(Texture &in, Texture &out, std::vector<float> &m, int num);
     void set_uniform(int index, uint32_t value);
     State                   &state;
@@ -433,6 +433,7 @@ public:
     char                        *user_buffer;   // Userspace pointer to buffer
     State                       &state;
 	GCS_CameraParams            gcsParams;
+    bool                        camera;
 private:
 };
 

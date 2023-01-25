@@ -512,7 +512,7 @@ void QPUprogram::set_uniform(int index, uint32_t value)
     uvalues[index] = value;
 }
 
-uint32_t QPUprogram::execute(Texture &in, Texture &out, bool force_update, float scale_factor, bool scaling)
+uint32_t QPUprogram::execute(Texture &in, Texture &out, bool force_update)
 {
     //qpu_setupPerformanceCounters(&state.base, &perfState);
 
@@ -528,35 +528,25 @@ uint32_t QPUprogram::execute(Texture &in, Texture &out, bool force_update, float
     int tr = tile_rows;
     int tc = tile_cols;
     int ni = num_instances;
-    if (scale_factor < 1.0)
-    {
-        tr = ceil(tile_rows * scale_factor);
-        tc = ceil(tile_cols * scale_factor);
-        ni = tr * tc;
-    }
     int tw = tile_width;
     int th = tile_height;
-    if (scaling)
-    {
-        tw = tw / scale_factor;
-        th = th / scale_factor - 1;// FIXME!! Should this be here???
-        //endwin();printf("tw:%d th:%d\n", tw, th);exit(1);
-    }
     if (force_update || (last_src_addr != src_addr) || (last_dst_addr != dst_addr))
     {
         qpu_lockBuffer(&program.progmem_buffer);
         last_src_addr = src_addr;
         last_dst_addr = dst_addr;
         // Build uniform stream
-        uint32_t stride = in.vcsm_info.width * 4;
+        // Camera texture is special case where Y info byte packed
+        uint32_t istride = in.vcsm_info.width * (in.camera ? 1 : 4);
+        uint32_t ostride = out.vcsm_info.width * 4;
         for(int y = 0; y < tr; y++)
         {
             for(int x = 0; x < tc; x++)
             {
-                program.progmem.uniforms.arm.uptr[(y * tc + x) * uniforms]       = src_addr + y * stride * th + x * tw * 4;
-                program.progmem.uniforms.arm.uptr[(y * tc + x) * uniforms + 1]   = dst_addr + y * stride * tile_height + x * tile_width * 4;
-                program.progmem.uniforms.arm.uptr[(y * tc + x) * uniforms + 2]   = stride;
-                program.progmem.uniforms.arm.uptr[(y * tc + x) * uniforms + 3]   = stride;
+                program.progmem.uniforms.arm.uptr[(y * tc + x) * uniforms]       = src_addr + y * istride * th + x * tw * (in.camera ? 1 : 4);
+                program.progmem.uniforms.arm.uptr[(y * tc + x) * uniforms + 1]   = dst_addr + y * ostride * tile_height + x * tile_width * 4;
+                program.progmem.uniforms.arm.uptr[(y * tc + x) * uniforms + 2]   = istride;
+                program.progmem.uniforms.arm.uptr[(y * tc + x) * uniforms + 3]   = ostride;
                 program.progmem.uniforms.arm.uptr[(y * tc + x) * uniforms + 4]   = tile_width / min_width;
                 program.progmem.uniforms.arm.uptr[(y * tc + x) * uniforms + 5]   = tile_height;
                 for(int u = 6; u < uniforms; u++)
@@ -568,6 +558,7 @@ uint32_t QPUprogram::execute(Texture &in, Texture &out, bool force_update, float
         }
         qpu_unlockBuffer(&program.progmem_buffer);
     }
+
     qpu_executeProgramDirect(&program, &state.base, ni, uniforms, uniforms, &perfState);
 
 
@@ -575,7 +566,7 @@ uint32_t QPUprogram::execute(Texture &in, Texture &out, bool force_update, float
     if (perflog) qpu_logPerformance(&perfState);
     return 0;
 }
-uint32_t QPUprogram::execute_sc2(Texture &in, Texture &out, bool force_update, float scale_factor, bool scaling)
+uint32_t QPUprogram::execute_sc2(Texture &in, Texture &out, bool force_update, float scale_factor)
 {
     //qpu_setupPerformanceCounters(&state.base, &perfState);
 
@@ -599,12 +590,9 @@ uint32_t QPUprogram::execute_sc2(Texture &in, Texture &out, bool force_update, f
     }
     int tw = tile_width;
     int th = tile_height;
-    if (scaling)
-    {
-        tw = tw / scale_factor;
-        th = th / scale_factor;
-        //endwin();printf("tw:%d th:%d\n", tw, th);exit(1);
-    }
+    tw = tw / scale_factor;
+    th = th / scale_factor;
+    //endwin();printf("tw:%d th:%d\n", tw, th);exit(1);
     if (force_update || (last_src_addr != src_addr) || (last_dst_addr != dst_addr))
     {
         qpu_lockBuffer(&program.progmem_buffer);
@@ -717,54 +705,54 @@ uint32_t QPUprogram::execute_scaled(Texture &in, Texture &out, bool force_update
     return 0;
 }
 
-uint32_t QPUprogram::execute(Texture &in, Texture &out, int owidth, int oheight, int ostride)
-{
-    //qpu_setupPerformanceCounters(&state.base, &perfState);
+// uint32_t QPUprogram::execute(Texture &in, Texture &out, int owidth, int oheight, int ostride)
+// {
+//     //qpu_setupPerformanceCounters(&state.base, &perfState);
 
 
-    uint32_t src_addr = in.bus_address; //in.lock();  in.unlock();
-    uint32_t dst_addr = out.bus_address; //out.lock(); out.unlock();
+//     uint32_t src_addr = in.bus_address; //in.lock();  in.unlock();
+//     uint32_t dst_addr = out.bus_address; //out.lock(); out.unlock();
 
-    qpu_lockBuffer(&program.progmem_buffer);
-    // Build uniform stream
-    uint32_t stride = in.vcsm_info.width * 4;
-    for(int y = 0; y < tile_rows; y++)
-    {
-        for(int x = 0; x < tile_cols; x++)
-        {
-            program.progmem.uniforms.arm.uptr[(y * tile_cols + x) * uniforms]       = src_addr + y * stride * tile_height + x * tile_width * 4;
-            program.progmem.uniforms.arm.uptr[(y * tile_cols + x) * uniforms + 1]   = dst_addr + y * ostride * oheight + x * owidth * 4;
-            program.progmem.uniforms.arm.uptr[(y * tile_cols + x) * uniforms + 2]   = stride;
-            program.progmem.uniforms.arm.uptr[(y * tile_cols + x) * uniforms + 3]   = ostride;
-            program.progmem.uniforms.arm.uptr[(y * tile_cols + x) * uniforms + 4]   = tile_width / min_width;
-            program.progmem.uniforms.arm.uptr[(y * tile_cols + x) * uniforms + 5]   = tile_height;
+//     qpu_lockBuffer(&program.progmem_buffer);
+//     // Build uniform stream
+//     uint32_t stride = in.vcsm_info.width * 4;
+//     for(int y = 0; y < tile_rows; y++)
+//     {
+//         for(int x = 0; x < tile_cols; x++)
+//         {
+//             program.progmem.uniforms.arm.uptr[(y * tile_cols + x) * uniforms]       = src_addr + y * stride * tile_height + x * tile_width * 4;
+//             program.progmem.uniforms.arm.uptr[(y * tile_cols + x) * uniforms + 1]   = dst_addr + y * ostride * oheight + x * owidth * 4;
+//             program.progmem.uniforms.arm.uptr[(y * tile_cols + x) * uniforms + 2]   = stride;
+//             program.progmem.uniforms.arm.uptr[(y * tile_cols + x) * uniforms + 3]   = ostride;
+//             program.progmem.uniforms.arm.uptr[(y * tile_cols + x) * uniforms + 4]   = tile_width / min_width;
+//             program.progmem.uniforms.arm.uptr[(y * tile_cols + x) * uniforms + 5]   = tile_height;
 
-            // printf("%08x %08x %08x %08x %08x %08x ",
-            //     program.progmem.uniforms.arm.uptr[(y * tile_cols + x) * uniforms],
-            //     program.progmem.uniforms.arm.uptr[(y * tile_cols + x) * uniforms+1],
-            //     program.progmem.uniforms.arm.uptr[(y * tile_cols + x) * uniforms+2],
-            //     program.progmem.uniforms.arm.uptr[(y * tile_cols + x) * uniforms+3],
-            //     program.progmem.uniforms.arm.uptr[(y * tile_cols + x) * uniforms+4],
-            //     program.progmem.uniforms.arm.uptr[(y * tile_cols + x) * uniforms+5]
-            // );
-            for(int u = 6; u < uniforms; u++)
-            {
-                program.progmem.uniforms.arm.uptr[(y * tile_cols + x) * uniforms + u] = uvalues[u - 6];
-                // printf("%08x ", uvalues[u - 6]);
-            }
-            // printf("\n");
-        }
+//             // printf("%08x %08x %08x %08x %08x %08x ",
+//             //     program.progmem.uniforms.arm.uptr[(y * tile_cols + x) * uniforms],
+//             //     program.progmem.uniforms.arm.uptr[(y * tile_cols + x) * uniforms+1],
+//             //     program.progmem.uniforms.arm.uptr[(y * tile_cols + x) * uniforms+2],
+//             //     program.progmem.uniforms.arm.uptr[(y * tile_cols + x) * uniforms+3],
+//             //     program.progmem.uniforms.arm.uptr[(y * tile_cols + x) * uniforms+4],
+//             //     program.progmem.uniforms.arm.uptr[(y * tile_cols + x) * uniforms+5]
+//             // );
+//             for(int u = 6; u < uniforms; u++)
+//             {
+//                 program.progmem.uniforms.arm.uptr[(y * tile_cols + x) * uniforms + u] = uvalues[u - 6];
+//                 // printf("%08x ", uvalues[u - 6]);
+//             }
+//             // printf("\n");
+//         }
 
-    }
-    qpu_unlockBuffer(&program.progmem_buffer);
-    qpu_executeProgramDirect(&program, &state.base, num_instances, uniforms, uniforms, &perfState);
+//     }
+//     qpu_unlockBuffer(&program.progmem_buffer);
+//     qpu_executeProgramDirect(&program, &state.base, num_instances, uniforms, uniforms, &perfState);
 
 
 
-    qpu_updatePerformance(&state.base, &perfState);
-    if (perflog) qpu_logPerformance(&perfState);
-    return 0;
-}
+//     qpu_updatePerformance(&state.base, &perfState);
+//     if (perflog) qpu_logPerformance(&perfState);
+//     return 0;
+// }
 uint32_t QPUprogram::execute(Texture &in, Texture &out, std::vector<float> &m, int num)
 {
     uint32_t src_addr = in.bus_address; //in.lock();  in.unlock();
@@ -964,6 +952,7 @@ Texture::Texture(State &_state, int w, int h, bool interp) : state(_state)
 #ifdef DBGMSG
     printf("Texture dimensions:%d %d buffer dimensions: %d %d\n", w, h, buffer_width, buffer_height);
 #endif
+    camera = false;
 
     // FIXME!! https://github.com/raspberrypi/linux/issues/4167
     // https://github.com/raspberrypi/userland/issues/720
@@ -1135,6 +1124,7 @@ Texture::Texture(State &_state, Cparams _cp) : state(_state), cp(_cp)
 	VCOS_STATUS_T vstatus;
 	int istatus;
 	GLenum glerror;
+    camera = true;
 
 	// Init VCOS logging
 	//vcos_log_set_level(VCOS_LOG_CATEGORY, VCOS_LOG_INFO);
@@ -1151,18 +1141,18 @@ Texture::Texture(State &_state, Cparams _cp) : state(_state), cp(_cp)
 	// Init EGL
 	//istatus = camGL_initGL(camGL);
     // Generate textures the current frame image is bound to
-	glGenTextures(1, &camGL->frame.textureRGB);
-	glGenTextures(1, &camGL->frame.textureY);
-	glGenTextures(1, &camGL->frame.textureU);
-	glGenTextures(1, &camGL->frame.textureV);
+	// glGenTextures(1, &camGL->frame.textureRGB);
+	// glGenTextures(1, &camGL->frame.textureY);
+	// glGenTextures(1, &camGL->frame.textureU);
+	// glGenTextures(1, &camGL->frame.textureV);
 
-	// Init GL for video processing
-	glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
-	glDisable(GL_STENCIL_TEST);
-	glDisable(GL_DEPTH_TEST);
-	glDisable(GL_DITHER);
+	// // Init GL for video processing
+	// glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+	// glDisable(GL_STENCIL_TEST);
+	// glDisable(GL_DEPTH_TEST);
+	// glDisable(GL_DITHER);
 
-    GLCHECK("tex cam gl init %x\n", e);
+    // GLCHECK("tex cam gl init %x\n", e);
 
 	// Init GCS
 	//GCS_CameraParams gcsParams;
@@ -1179,9 +1169,12 @@ Texture::Texture(State &_state, Cparams _cp) : state(_state), cp(_cp)
 
     width   = cp.width;
     height  = cp.height;
-    buffer_width    = pot(width);
-    buffer_height   = pot(height);
-    // vcsm buffers must have power-of-two dimensions
+    buffer_width    = width;
+    buffer_height   = height;
+    // Camera textures are a special case, and are reinterpreted for a standard GL shader. 
+    // We fill in vcsm_info here so that the QPU can read directly from the Y part of the I420 
+    // output from the camera without a GL format conversion copy
+    // 
     vcsm_info.width     = buffer_width;
     vcsm_info.height    = buffer_height;
 
@@ -1207,15 +1200,15 @@ Texture::Texture(State &_state, Cparams _cp) : state(_state), cp(_cp)
 
     // vc_handle = vcsm_vc_hdl_from_ptr(vcsm_buffer);
 
-    texture = camGL->frame.textureY;
-    glGenTextures(1, &texture);
-    glBindTexture(GL_TEXTURE_2D, texture);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    // glEGLImageTargetTexture2DOES(GL_TEXTURE_2D, egl_buffer);
-    glBindTexture(GL_TEXTURE_2D, 0);
+    // texture = camGL->frame.textureY;
+    // glGenTextures(1, &texture);
+    // glBindTexture(GL_TEXTURE_2D, texture);
+    // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    // // glEGLImageTargetTexture2DOES(GL_TEXTURE_2D, egl_buffer);
+    // glBindTexture(GL_TEXTURE_2D, 0);
 
     return;
 
@@ -1234,22 +1227,22 @@ int Texture::get_cam_frame()
 		void *cameraBuffer = gcs_getFrameBufferData(mmal_cam_buffer_header);
 
         // Get the bus address of the buffer
-        printf("try to get bus address of frame %08x\n", cameraBuffer);
+        //printf("try to get bus address of frame %08x\n", cameraBuffer);
         vc_handle = vcsm_vc_hdl_from_ptr(cameraBuffer);
-        printf("vc handle %8x\n", vc_handle);
+        //printf("vc handle %8x\n", vc_handle);
         vcsm_info.vcsm_handle = vcsm_usr_handle(cameraBuffer);
-        printf("vcsm user handle %8x\n", vcsm_info.vcsm_handle);
+        //printf("vcsm user handle %8x\n", vcsm_info.vcsm_handle);
         bus_address = lock();
-        printf("bus addr %08x\n", bus_address);
+        //printf("bus addr %08x\n", bus_address);
         unlock();
 
         if (gcsParams.mmalEnc == 0)
         {
-            // Opaque format, needed for texture format convert
-            if (camGL_processCameraFrame(this, cameraBuffer) == 0)
-                return CAMGL_SUCCESS;
-            printf("Failed to process frame!\n");
-            return CAMGL_ERROR;
+            // // Opaque format, needed for texture format convert
+            // if (camGL_processCameraFrame(this, cameraBuffer) == 0)
+            //     return CAMGL_SUCCESS;
+            // printf("Failed to process frame!\n");
+            // return CAMGL_ERROR;
         }
         return CAMGL_SUCCESS;
 

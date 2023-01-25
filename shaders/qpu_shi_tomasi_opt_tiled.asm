@@ -68,7 +68,8 @@
 .set vpm_set,       rb15
 .set vdw_set,       rb16
 .set vdw_stride,    rb17
-.set stride,        rb18
+.set istride,       rb18
+.set ostride,       rb25
 
 .set temp0,         rb19
 .set temp1,         rb20
@@ -83,9 +84,9 @@
 
 mov     src_ptr,        unif;
 mov     tgt_addr,       unif;
-mov	    stride,         unif;
+mov	    istride,        unif;
 # Read and throw away the uniforms we don't need
-mov	    temp0,          unif;
+mov	    ostride,        unif;
 mov	    temp0,          unif;
 mov	    line_count,     unif;
 
@@ -124,7 +125,7 @@ add     vdw_set,    r0,     r1;
 # Create VPM DMA Stride setup
 #                               stride
 #  11 0000000000000 0 0000000000010000
-sub     src_ptr,    src_ptr,        stride
+sub     src_ptr,    src_ptr,        istride
 
 
 mov     vdw_stride, vdw_setup_1(0);
@@ -145,7 +146,7 @@ mov     t0s,        r0;                     add     r0,         r0,         num6
 mov     t0s,        r0;                     add     r0,         r0,         num64           # 2     r0c1
 mov     t0s,        r0;                     add     r0,         r0,         num64           # 3     r0c2
 mov     t0s,        r0;                     add     r0,         r0,         num64           # 4     r0c3
-add     src_ptr,    src_ptr,    stride;                                             ldtmu0  # 3
+add     src_ptr,    src_ptr,    istride;                                            ldtmu0  # 3
 mov     t0s,        r0;                                                                     # 4     r0c4
 
 mov     r0c0,       r4;                     mov     r0,         src_ptr;            ldtmu0  # 3
@@ -157,7 +158,7 @@ mov     t0s,        r0;                     add     r0,         r0,         num6
 mov     r0c3,       r4;                                                             ldtmu0  # 3
 mov     t0s,        r0;                     add     r0,         r0,         num64           # 4     r1c3
 mov     r0c4,       r4;
-add     src_ptr,    src_ptr,    stride;                                             ldtmu0  # 3
+add     src_ptr,    src_ptr,    istride;                                            ldtmu0  # 3
 mov     t0s,        r0;                                                                     # 4     r1c4
 
 
@@ -170,7 +171,7 @@ mov     t0s,        r0;                     add     r0,         r0,         num6
 mov     r1c3,       r4;                                                             ldtmu0  # 3
 mov     t0s,        r0;                     add     r0,         r0,         num64           # 4     r2c3
 mov     r1c4,       r4;
-add     src_ptr,    src_ptr,    stride;                                             ldtmu0  # 3
+add     src_ptr,    src_ptr,    istride;                                            ldtmu0  # 3
 mov     t0s,        r0                                                                      # 4     r2c4
 
 
@@ -279,7 +280,7 @@ mov     t0s,        r0                                                          
     mov         t0s,        r0;                     add     r0,         r0,         num64           # 4     rnc3
     ldtmu0                                                                                          # 3
 
-    mov         t0s,        r0;                     add     src_ptr,    src_ptr,    stride          # 4     rnc4
+    mov         t0s,        r0;                     add     src_ptr,    src_ptr,    istride         # 4     rnc4
     .endif
 
 
@@ -347,7 +348,7 @@ mov     t0s,        r0                                                          
     mov         vw_setup,   vdw_set
     mov         vw_setup,   vdw_stride
     mov         vw_addr,    tgt_addr
-    add         tgt_addr,   tgt_addr,   stride
+    add         tgt_addr,   tgt_addr,   ostride
 
     # Shuffle the rows up
     mov         r0c0,       r1c0

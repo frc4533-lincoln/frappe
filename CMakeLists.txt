@@ -7,8 +7,7 @@ project(frappe VERSION 0.1)
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 # Fix warnings: https://stackoverflow.com/questions/48149323/what-does-the-gcc-warning-project-parameter-passing-for-x-changed-in-gcc-7-1-m
-#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}" " -Wno-psabi")
-#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-psabi")
 
 
 # Set variables for specific boards
@@ -116,7 +115,7 @@ add_custom_command(
     COMMAND ${VC4_TOOLPATH}/vc4-elf-objcopy -O binary vpu_functions.elf vpu_functions.bin
     COMMAND ${TOOLCHAIN_LD} -r -b binary -o vpu_functions.o vpu_functions.bin 
 )
-
+add_custom_target(vpu_functions DEPENDS vpu_functions.o)
 
 # -----------------------------------------------------------------------
 # Shared library
@@ -136,8 +135,9 @@ add_executable(
     src/main.cpp
     ${FRAPPE_SOURCES}
     ${QPU_OBJECTS}
-    vpu_functions.o    
+    vpu_functions.o
 )
+add_dependencies(ff vpu_functions)
 
 # small - benchmarking app
 add_executable(
@@ -145,8 +145,9 @@ add_executable(
     src/small.cpp
     ${FRAPPE_SOURCES}
     ${QPU_OBJECTS}
-    vpu_functions.o    
+    vpu_functions.o
 )
+add_dependencies(small vpu_functions)
 
 # min_detect - minimal example
 add_executable(
@@ -154,8 +155,9 @@ add_executable(
     src/min_detect.cpp
     ${FRAPPE_SOURCES}
     ${QPU_OBJECTS}
-    vpu_functions.o    
+    vpu_functions.o
 )
+add_dependencies(min_detect vpu_functions)
 
 # min_detect - minimal example
 add_executable(
@@ -163,8 +165,9 @@ add_executable(
     src/stream.cpp
     ${FRAPPE_SOURCES}
     ${QPU_OBJECTS}
-    vpu_functions.o    
+    vpu_functions.o
 )
+add_dependencies(stream vpu_functions)
 
 target_include_directories(ff PUBLIC ${OPENGL_INCLUDE_DIR})
 target_include_directories(small PUBLIC ${OPENGL_INCLUDE_DIR})

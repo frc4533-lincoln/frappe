@@ -69,6 +69,7 @@ Detector::Detector(State &_state, int _width, int _height, int tc, int tr, int t
     // This allows for up to 32 fiducials detected per image
     t_fid   (   Texture(_state, 128, 64, true)),
     t_output(   Texture(_state, _width, _height, true)),
+    t_image (   Texture(_state, _width, _height, true)),
     // Smallest VCSM buffer available, this is large enough for 1024x1024 mask
     t_mask  (   Texture(_state, 64, 64, false)),
     t_codes (   Texture(_state, 64, 64, false)),
@@ -233,15 +234,15 @@ void Detector::textwin(Texture &buf)
 //
 // Fiducial detection 
 //
-MarkerVec Detector::detect(Texture &input, Texture &output)
+MarkerVec Detector::detect(Texture &image, Texture &output)
 {
-    detect(input);
+    detect(image);
     // render to output
 
     return mv;
 }
 
-MarkerVec Detector::detect(Texture &input)
+MarkerVec Detector::detect(Texture &image)
 {
     times[15] = 0;
     main_timer.set_time();
@@ -249,13 +250,21 @@ MarkerVec Detector::detect(Texture &input)
 
 
 
-    if (input.width != width || input.height != height)
+    if (image.width != width || image.height != height)
     {
         printf("Mismatch between input texture size and detector size input:%d %d detector:%d %d\n",
-            input.width, input.height, width, height);
+            image.width, image.height, width, height);
         endwin();
         exit(1);
     }
+
+    if (image.camera)
+    {
+        // Copy and change format
+        p_vpu_functions->execute(VPU_CAM_Y_COPY, image.bus_address, t_image.bus_address, 0, 0, 0);
+    }
+
+    Texture &input = image.camera ? t_image : image;
 
     // -----------------------------------------------------------------------
     // Adaptive scaling
@@ -363,7 +372,7 @@ MarkerVec Detector::detect(Texture &input)
             render_pass(state.fbo, *m_quad_scale, *p_shi_tomasi, input, t_buffer[0]);
         else 
         {   
-            p_qpu_shi_tomasi_scale->execute_sc2(input, t_buffer[0], true, params.scale_factor, true);
+            p_qpu_shi_tomasi_scale->execute_sc2(input, t_buffer[0], true, params.scale_factor);
         }
     }
     else
@@ -371,7 +380,7 @@ MarkerVec Detector::detect(Texture &input)
         if (gl) render_pass(state.fbo, *m_quad, *p_shi_tomasi, input, t_buffer[0]);
         else
         {    
-            p_qpu_shi_tomasi->execute(input, t_buffer[0], true, params.scale_factor);
+            p_qpu_shi_tomasi->execute(input, t_buffer[0], true);
         }
     }
 
@@ -396,7 +405,7 @@ MarkerVec Detector::detect(Texture &input)
     if (gl) render_pass(state.fbo, *m_quad, *p_suppress, t_buffer[0], t_buffer[1]);
     else
     {
-        p_qpu_suppress->execute(t_buffer[0], t_buffer[1], true, params.scale_factor);
+        p_qpu_suppress->execute(t_buffer[0], t_buffer[1], true);
     }
     if (safe) glFinish();
     times[2] = main_timer.diff_time();
@@ -595,7 +604,7 @@ void drawFrameAxes(cv::Mat &image, cv::Mat &cameraMatrix, cv::Mat &distCoeffs,
     cv::putText(image, "z", imagePoints[3], cv::FONT_HERSHEY_SIMPLEX, 0.6, cv::Scalar(0, 0, 255, 255), 0.8, cv::LINE_8, true);
 }
 
-void Detector::render(Texture &input, bool axes)
+void Detector::render(bool axes)
 {
     if (axes)
     {
@@ -613,7 +622,7 @@ void Detector::render(Texture &input, bool axes)
         }
         t_output.user_unlock();
     }
-    do_render(input);
+    do_render();
     glFinish();
     times[14] = main_timer.diff_time();
 }
@@ -852,7 +861,7 @@ void Detector::refine_corners(Texture &buf)
 
 }
 
-void Detector::do_render(Texture &buf)
+void Detector::do_render()
 {
 
     if (draw_fid)

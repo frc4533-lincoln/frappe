@@ -89,13 +89,13 @@ class Detector
 public:
     Detector(State &_state, int _width, int _height, int tc=10, int tr=15, int tw=64, int th=32);
     // Just detect the markers
-    std::vector<Marker> detect(Texture &input);
+    std::vector<Marker> detect(Texture &image);
 
     // Detect markers and display diagnostics on output texture
-    std::vector<Marker> detect(Texture &input, Texture &output);
+    std::vector<Marker> detect(Texture &image, Texture &output);
 
     void calculate_extrinsics(float size);
-    void render(Texture &input, bool axes);
+    void render(bool axes);
     cv::Mat render_to_mat(Texture &input);
 
     struct Params
@@ -122,14 +122,15 @@ public:
 
     enum VPU_funcs
     {
-        VPU_MAKE_MASK,
-        VPU_MAKE_BITS,
-        VPU_DECODE,
-        VPU_EXTRACT_CHANNEL,
-        VPU_LOAD_CODE,
-        VPU_SCALE,
-        VPU_DECODE_ALL,
-        VPU_BANDWIDTH
+        VPU_MAKE_MASK       = 0,
+        VPU_MAKE_BITS       = 1,
+        VPU_DECODE          = 2,
+        VPU_EXTRACT_CHANNEL = 3,
+        VPU_LOAD_CODE       = 4,
+        VPU_SCALE           = 5,
+        VPU_DECODE_ALL      = 6,
+        VPU_BANDWIDTH       = 7,
+        VPU_CAM_Y_COPY      = 8,
     };
 
 
@@ -140,6 +141,7 @@ public:
     Texture     t_buffer[2];
     Texture     t_fid;
     Texture     t_output;
+    Texture     t_image;
     Texture     t_mask;
     //Texture     t_atlas;
     Texture     t_codes;
@@ -218,7 +220,7 @@ private:
     void refine_corners(Texture &buf);
     void eliminate_unsquare();
     void eliminate_invalid();
-    void do_render(Texture &buf);
+    void do_render();
 
     void textwin(Texture &buf);
     Timer main_timer, aux_timer;
