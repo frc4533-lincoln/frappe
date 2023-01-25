@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.10)
 
 # set the project name
-project(ff)
+project(frappe VERSION 0.1)
 
 # specify the C++ standard
 set(CMAKE_CXX_STANDARD 11)
@@ -16,14 +16,14 @@ message("-- CMAKE_SYSTEM_INFO_FILE: ${CMAKE_SYSTEM_INFO_FILE}")
 message("-- CMAKE_SYSTEM_NAME:      ${CMAKE_SYSTEM_NAME}")
 message("-- CMAKE_SYSTEM_PROCESSOR: ${CMAKE_SYSTEM_PROCESSOR}")
 message("-- CMAKE_SYSTEM:           ${CMAKE_SYSTEM}")
+message("-- CMAKE_BUILD_TYPE:       ${CMAKE_BUILD_TYPE}")
 
 file(READ "/sys/firmware/devicetree/base/model" MODEL)
 message("-- MODEL:                  ${MODEL}")
 
 
-# Libraries
-
-# This for native RPI
+# -----------------------------------------------------------------------
+# Native RPI legacy libraries and dependencies
 include_directories(${CMAKE_SYSROOT}/usr/local/include)
 include_directories(${CMAKE_SYSROOT}/opt/vc/include/)
 include_directories(${CMAKE_SYSROOT}/opt/vc/include/interface/vcos/pthreads)
@@ -45,20 +45,33 @@ set(OPENGL_LIBRARIES
     ${LIB_BEGL} 
     ${LIB_GLES})
 
-set(rpi_extra_sources
+find_package(OpenCV REQUIRED)
+
+set(TARGET_LIBRARIES
+    pthread
+    curses
+    ${OPENGL_LIBRARIES}
+    ${CMAKE_DL_LIBS}
+    ${OpenCV_LIBS} 
+)
+
+
+# -----------------------------------------------------------------------
+# Main sources
+set(FRAPPE_SOURCES
+    src/detector.cpp
+    src/glhelpers.cpp
+    src/stb.cpp
+    src/tui.cpp
     src/gcs.cpp
     src/mailbox.cpp
     src/qpu_base.cpp
     src/qpu_info.cpp
     src/qpu_program.cpp
 )
-include_directories(/usr/include/libdrm)
 
-
-find_package(OpenCV REQUIRED)
-
-
-# QPU files for RPI    
+# -----------------------------------------------------------------------
+# Custom build for the QPU shaders
 
 # Set VC4ASM compiler to compile all asm source files
 if(NOT CMAKE_CROSSCOMPILING)
@@ -72,26 +85,22 @@ set(QPU_SOURCES
     shaders/qpu_warp.asm
 )
 set(QPU_OBJECTS "")
-add_custom_target(qpu_programs)
 foreach (file ${QPU_SOURCES})
     get_filename_component(file_name ${file} NAME_WE)
     add_custom_command(
         OUTPUT ${file_name}.o
         DEPENDS ${file}
         COMMAND ${VC4ASM} -V -o ${CMAKE_CURRENT_BINARY_DIR}/${file_name}.bin ${CMAKE_SOURCE_DIR}/${file}
-        #COMMAND objcopy -I binary -O elf32-littlearm --rename-section .data=.rodata,alloc,load,readonly ${file_name}.bin ${file_name}.o
         COMMAND ${TOOLCHAIN_LD} -r -b binary -o ${file_name}.o ${file_name}.bin 
     )
     add_custom_target(${file_name}
         DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/${file_name}.o
     )
-    add_dependencies(qpu_programs ${file_name})
     list(APPEND QPU_OBJECTS ${file_name}.o)
 endforeach()
 
-set_source_files_properties(qpu_warp.o PROPERTIES EXTERNAL_OBJECT true GENERATED true)
-
-
+# -----------------------------------------------------------------------
+# Custom build for the VPU functions
 set(VPU_SOURCES
     ${CMAKE_SOURCE_DIR}/vc4/crt0.S
     ${CMAKE_SOURCE_DIR}/vc4/crti.S
@@ -107,105 +116,62 @@ add_custom_command(
     COMMAND ${VC4_TOOLPATH}/vc4-elf-objcopy -O binary vpu_functions.elf vpu_functions.bin
     COMMAND ${TOOLCHAIN_LD} -r -b binary -o vpu_functions.o vpu_functions.bin 
 )
-add_custom_target(vpu_functions
-    DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/vpu_functions.o
+
+
+# -----------------------------------------------------------------------
+# Shared library
+add_library(frappe SHARED
+    ${FRAPPE_SOURCES}
 )
+set_target_properties(frappe PROPERTIES VERSION ${PROJECT_VERSION})
+set_target_properties(frappe PROPERTIES PUBLIC_HEADER include/frappe.hpp)
+target_include_directories(frappe PUBLIC ${OPENGL_INCLUDE_DIR})
+target_link_libraries(frappe ${TARGET_LIBRARIES})
 
-
-# add the executable
+# -----------------------------------------------------------------------
+# Executables
+# ff - text UI interactive
 add_executable(
     ff 
     src/main.cpp
-    src/detector.cpp
-    src/glhelpers.cpp
-    src/stb.cpp
-    src/tui.cpp
-    ${rpi_extra_sources}
-
+    ${FRAPPE_SOURCES}
     ${QPU_OBJECTS}
     vpu_functions.o    
 )
-add_dependencies(ff qpu_programs vpu_functions)
 
-
-# includes
-target_include_directories(
-    ff
-    PUBLIC ${OPENGL_INCLUDE_DIR}
-    PUBLIC ${GLFW_INCLUDE_DIR}
-    #PUBLIC ${GLEW_INCLUDE_DIRS}
-)
-
-target_link_libraries(
-    ff
-    pthread
-    curses
-    ${OPENGL_LIBRARIES}
-    ${CMAKE_DL_LIBS}
-    ${OpenCV_LIBS}
-    
-)
-
-
-
-# add the executable
+# small - benchmarking app
 add_executable(
     small
     src/small.cpp
-    src/detector.cpp
-    src/glhelpers.cpp
-    src/stb.cpp
-    src/tui.cpp
-
-    ${rpi_extra_sources}
+    ${FRAPPE_SOURCES}
     ${QPU_OBJECTS}
     vpu_functions.o    
 )
 
-# includes
-target_include_directories(
-    small
-    PUBLIC ${OPENGL_INCLUDE_DIR}
-    PUBLIC ${GLFW_INCLUDE_DIR}
-)
-
-target_link_libraries(
-    small
-    pthread
-    curses
-    ${OPENGL_LIBRARIES}
-    ${CMAKE_DL_LIBS}
-    ${OpenCV_LIBS}
-    
-)
-
-# add the executable
+# min_detect - minimal example
 add_executable(
     min_detect
     src/min_detect.cpp
-    src/detector.cpp
-    src/glhelpers.cpp
-    src/stb.cpp
-    src/tui.cpp
-
-    ${rpi_extra_sources}
+    ${FRAPPE_SOURCES}
     ${QPU_OBJECTS}
     vpu_functions.o    
 )
 
-# includes
-target_include_directories(
-    min_detect
-    PUBLIC ${OPENGL_INCLUDE_DIR}
-    PUBLIC ${GLFW_INCLUDE_DIR}
+# min_detect - minimal example
+add_executable(
+    stream
+    src/stream.cpp
+    ${FRAPPE_SOURCES}
+    ${QPU_OBJECTS}
+    vpu_functions.o    
 )
 
-target_link_libraries(
-    min_detect
-    pthread
-    curses
-    ${OPENGL_LIBRARIES}
-    ${CMAKE_DL_LIBS}
-    ${OpenCV_LIBS}
-    
-)
+target_include_directories(ff PUBLIC ${OPENGL_INCLUDE_DIR})
+target_include_directories(small PUBLIC ${OPENGL_INCLUDE_DIR})
+target_include_directories(min_detect PUBLIC ${OPENGL_INCLUDE_DIR})
+target_include_directories(stream PUBLIC ${OPENGL_INCLUDE_DIR})
+
+target_link_libraries(ff ${TARGET_LIBRARIES})
+target_link_libraries(small ${TARGET_LIBRARIES})
+target_link_libraries(min_detect ${TARGET_LIBRARIES})
+target_link_libraries(stream ${TARGET_LIBRARIES})

@@ -86,7 +86,7 @@ public:
         verbose = v;
         struct timespec ts;
         clock_gettime(CLOCK_MONOTONIC, &ts);
-        t = ts.tv_sec * 1000000 + ts.tv_nsec / 1000;
+        t0 = t = ts.tv_sec * 1000000 + ts.tv_nsec / 1000;
         if (verbose) printf("set:%llu\n", t);
     }
     int diff_time()
@@ -99,8 +99,18 @@ public:
         t = d;
         return delta;
     }
+    int elapsed_time(bool reset=false)
+    {
+        struct timespec ts;
+        clock_gettime(CLOCK_MONOTONIC, &ts);
+        uint64_t d = ts.tv_sec * 1000000 + ts.tv_nsec / 1000;
+        int delta = d - t0;
+        if (verbose) printf("diff:%llu %llu %d\n", d, t0, delta);
+        if (reset) t0 = d;
+        return delta;
+    }
 private:
-    uint64_t t;
+    uint64_t t0, t;
     bool verbose;
 };
 
@@ -417,10 +427,12 @@ public:
     int                         vc_handle;
     Cparams                     cp;
     CamGL                       *camGL;
+    void                        *mmal_cam_buffer_header;
     // Structure to hold info for shared videocore buffer that will back the texture
     EGLImageKHR                 egl_buffer;
     char                        *user_buffer;   // Userspace pointer to buffer
     State                       &state;
+	GCS_CameraParams            gcsParams;
 private:
 };
 

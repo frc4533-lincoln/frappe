@@ -17,6 +17,8 @@
 #define offset(x, y, z) (((x) << 1) + ((y) << (z)))
 
 // Object files from QPU shader binaries are directly linked in to code
+// http://elm-chan.org/junk/32bit/binclude.html
+// https://www.devever.net/~hl/incbin
 extern const char  _binary_qpu_warp_bin_start,                      _binary_qpu_warp_bin_size;
 extern const char  _binary_qpu_shi_tomasi_opt_tiled_bin_start,      _binary_qpu_shi_tomasi_opt_tiled_bin_size;
 extern const char  _binary_qpu_shi_tomasi_scale_tiled_bin_start,    _binary_qpu_shi_tomasi_scale_tiled_bin_size;
@@ -26,6 +28,7 @@ extern const char  _binary_vpu_functions_bin_start,                 _binary_vpu_
 
 
 // GLSL shader strings
+// https://stackoverflow.com/a/33172917
 const std::string vs_glsl = 
 #include "vs.glsl"
 ;
@@ -83,11 +86,6 @@ Detector::Detector(State &_state, int _width, int _height, int tc, int tr, int t
     p_colour        = new Program(vs_simple_glsl.c_str(), colour_glsl.c_str(), "colour");
     dict            = new Dictionary(t_codes);
 
-    //p_qpu_shi_tomasi    = new QPUprogram(state, "qpu_shi_tomasi_opt_tiled.bin", 0, 10, 15, 64, 32, 64);
-    //p_qpu_shi_tomasi_scale  = new QPUprogram(state, "qpu_shi_tomasi_scale_tiled.bin", 33, 10, 15, 64, 32, 64, 1024);
-    //p_qpu_suppress      = new QPUprogram(state, "qpu_suppress_opt_tiled.bin",   2, 10, 15, 64, 32, 64);
-    //p_qpu_warp          = new QPUprogram(state, "qpu_warp.bin", 16, 8, 4, 16, 16, 64);
-    //p_vpu_functions     = new VPUprogram(state, "functions.elf");
     
     p_qpu_shi_tomasi        = new QPUprogram(state, (uint8_t*)&_binary_qpu_shi_tomasi_opt_tiled_bin_start, 
                                                     (uint32_t)&_binary_qpu_shi_tomasi_opt_tiled_bin_size, 0, 10, 15, 64, 32, 64);

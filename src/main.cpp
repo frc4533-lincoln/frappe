@@ -9,7 +9,7 @@
 
 
 
-//#define CAMERA
+#define CAMERA
 
 #define TUI
 
@@ -24,7 +24,7 @@
 #include "qpu_program.h"
 #include "qpu_info.h"
 
-const char *vs_camera = R"(
+const char *vs_camera = R"glsl(
 #version 100
 precision mediump float;
 
@@ -47,9 +47,9 @@ void main()
     tc7 = vec2(v_tex.x       , v_tex.y - vpix);
     tc8 = vec2(v_tex.x + hpix, v_tex.y - vpix);
 }
-)";
+)glsl";
 
-const char *fs_camera= R"(
+const char *fs_camera= R"glsl(
 #version 100
 #extension GL_OES_EGL_image_external : require
 precision mediump float;
@@ -60,9 +60,9 @@ void main()
 {
     gl_FragColor = texture2D(tex, tex_coord);
 }
-)";
+)glsl";
 
-const char *vs_tex2 = R"(
+const char *vs_tex2 = R"glsl(
 #version 100
 precision mediump float;
 
@@ -74,7 +74,7 @@ void main()
     gl_Position = v_pos;
     tex_coord = v_tex;
 }
-)";
+)glsl";
 
 
 //#include "aruco_nano.h"
@@ -180,8 +180,10 @@ int main(int argc, char **argv)
         // If we are using the camera, copy the frame into the input buffer
 #ifdef CAMERA
         t_camera.get_cam_frame();
-        render_pass(state.fbo, quad_yflip, p_camera, t_camera, t_image);
-        glFinish();
+        t_camera.dump_file("t1.bin");
+        exit(1);
+        // render_pass(state.fbo, quad_yflip, p_camera, t_camera, t_image);
+        // glFinish();
 #endif
 
         //----------------------------
@@ -189,8 +191,12 @@ int main(int argc, char **argv)
 
 
         // Run the detector
+#ifdef CAMERA
+        mv = detector.detect(t_camera);
+        // mv = detector.detect(t_image);
+#else
         mv = detector.detect(t_image);
-
+#endif
 
         // Calculate the extrinsics with marker size of 40mm
         detector.calculate_extrinsics(40.0);

@@ -2,6 +2,7 @@
 #define GCS_H
 
 #include <inttypes.h>
+#include "interface/mmal/mmal.h"
 
 // #ifdef __cplusplus
 // extern "C" {
@@ -62,6 +63,7 @@ void* gcs_getFrameBufferData(void *framebuffer);
  * Has to be called before a new frame buffer can be requested. */
 void gcs_returnFrameBuffer(GCS *gcs);
 
+MMAL_COMPONENT_T *gcs_get_camera(GCS *gcs);
 
 // #ifdef __cplusplus
 // }

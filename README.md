@@ -53,15 +53,32 @@ qemu-arm (enabled):
 ```
 
 
-### Build for RPi0
+## Build
+
+Make containers and image, this is a docker container with cross compile tools
+for both the arm cpu and for the qpu and vpu to allow full cross compile of the
+complete app. The image is a standard raspbian install image with a bunch
+of necessities installed, used for a true source of headers, and for building
+and installing OpenCV 4.5.2.
+
+Do:
 ```
-make rpi0
+./scripts/build_all.sh
 ```
 
-## Build for RPi3 and RPi02
+To compile the Frappe library and basic apps, do:
 ```
-make rpi3
+./scripts/compile.sh
 ```
 
+## Hacked userland
+This is just the raspicam bits lifted and hacked to use the Frappe library.
+This uses the Frappe library to recognise fiducials in the camera video stream and 
+make them available over a tcp socket
+
+To build:
+```
+./scripts/compile_userland.sh
+```
 
 

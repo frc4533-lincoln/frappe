@@ -30,16 +30,20 @@
 #define GCS_WATCHDOG_TIMEOUT_MS  4000
 
 /* How many buffers the camera has to work with. 
- * 3 minimum, but might introduce some latency as only 2 can be used alternatingly in the background while one processes.
+ * 3 minimum, but might introduce some latency as only 2 can be used alternatingly in the 
+ * background while one processes.
  * More than 4 are not needed and not used. */
 #define GCS_SIMUL_BUFFERS 4
 
 /* GPU Camera Stream
-	Simple MMAL camera stream using the preview port, keeping only the most recent camera frame buffer for realtime, low-latency CV applications
+	Simple MMAL camera stream using the preview port, keeping only the most recent camera 
+    frame buffer for realtime, low-latency CV applications
 	Handles MMAL component creation and setup
 
-	Watchdog: Watches and stops stream if frames have stopped coming. Implemented by a timeout since last frame
-	Buffer Pool: Collection of buffers used by the camera output to write to, processed and dropped frames are returned to it
+	Watchdog: Watches and stops stream if frames have stopped coming. Implemented by 
+    a timeout since last frame
+	Buffer Pool: Collection of buffers used by the camera output to write to, processed 
+    and dropped frames are returned to it
 */
 struct GCS
 {
@@ -50,13 +54,13 @@ struct GCS
 	// Camera parameters
 	GCS_CameraParams cameraParams;
 
-	MMAL_COMPONENT_T *camera; // Camera component
-	MMAL_PORT_T *cameraOutput; // Camera output port (preview)
-	MMAL_POOL_T *bufferPool; // Pool of buffers for camera output to use
-	MMAL_BUFFER_HEADER_T *curFrameBuffer; // Nost recent camera frame buffer
-	MMAL_BUFFER_HEADER_T *processingFrameBuffer; // Nost recent camera frame buffer
-	VCOS_TIMER_T watchdogTimer; // Watchdog to detect if camera stops sending frames
-	VCOS_MUTEX_T frameReadyMutex; // For waiting for next ready frame
+	MMAL_COMPONENT_T        *camera;                // Camera component
+	MMAL_PORT_T             *cameraOutput;          // Camera output port (preview)
+	MMAL_POOL_T             *bufferPool;            // Pool of buffers for camera output to use
+	MMAL_BUFFER_HEADER_T    *curFrameBuffer;        // Nost recent camera frame buffer
+	MMAL_BUFFER_HEADER_T    *processingFrameBuffer; // Nost recent camera frame buffer
+	VCOS_TIMER_T            watchdogTimer;          // Watchdog to detect if camera stops sending frames
+	VCOS_MUTEX_T            frameReadyMutex;        // For waiting for next ready frame
 };
 
 /* Local functions (callbacks) */
@@ -68,6 +72,11 @@ static void gcs_onCameraOutput(MMAL_PORT_T *port, MMAL_BUFFER_HEADER_T *buffer);
 // Watchdog callback for when no new camera frames are pushed for a while, indicating an error
 static void gcs_onWatchdogTrigger(void *context);
 
+
+MMAL_COMPONENT_T *gcs_get_camera(GCS *gcs)
+{
+    return gcs->camera;
+}
 
 GCS *gcs_create(GCS_CameraParams *cameraParams)
 {
@@ -360,6 +369,7 @@ static void gcs_onCameraOutput(MMAL_PORT_T *port, MMAL_BUFFER_HEADER_T *buffer)
 			gcs->curFrameBuffer = NULL;
 			// On drop frame
 		}
+        printf("gcs set new frame\n");
 
 		// Set the newest camera frame
 		gcs->curFrameBuffer = buffer;
