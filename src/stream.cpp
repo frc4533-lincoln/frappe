@@ -1,15 +1,31 @@
 
 
-/*
- * File:   buffer_demo.c
- * Author: Tasanakorn
- *
- * Created on May 22, 2013, 1:52 PM
- */
+
+// Useful info
+// http://www.jvcref.com/files/PI/documentation/html/group___mmal_buffer_header.html
+// https://github.com/t-moe/rpi_mmal_examples
+// https://github.com/tasanakorn/rpi-mmal-demo
+// https://forums.raspberrypi.com/viewtopic.php?t=167652
+
+// Enable CPU side messages:
+// export VC_LOGLEVEL="mmal:trace"
+//
+// Dump GPU side messages
+// sudo vcdbg log msg
+
+
+// Author: Tasanakorn
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/time.h>
+#include <errno.h>
+#include <string.h>
+#include <unistd.h>
+#include <netdb.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+
 
 #include "bcm_host.h"
 #include "interface/vcos/vcos.h"
@@ -19,16 +35,13 @@
 #include "interface/mmal/util/mmal_connection.h"
 #include "interface/mmal/util/mmal_util.h"
 #include "interface/mmal/util/mmal_util_params.h"
-// #include <cairo/cairo.h>
 
 #include "glhelpers.hpp"
 #include "detector.hpp"
-// #include "tui.hpp"
+#include "qpu_base.h"
 
 Timer master;
 
-// #include "qpu_program.h"
-// #include "qpu_info.h"
 
 #define MMAL_CAMERA_PREVIEW_PORT 0
 #define MMAL_CAMERA_VIDEO_PORT 1
@@ -98,6 +111,7 @@ void main()
     gl_FragColor = texture2D(tex, tex_coord);
 }
 )glsl";
+
 static void camera_video_buffer_callback(MMAL_PORT_T *port, MMAL_BUFFER_HEADER_T *buffer)
 {
     //fprintf(stderr, "INFO:%s %8x\n", __func__, buffer);
@@ -115,18 +129,15 @@ static void camera_video_buffer_callback(MMAL_PORT_T *port, MMAL_BUFFER_HEADER_T
     else
     {
         MMAL_BUFFER_HEADER_T *new_buffer;
-
         frame_count++;
-
         MMAL_STATUS_T status;
-        if (0)
-        {
-            mmal_buffer_header_release(buffer);
-        }else{
-            status = mmal_port_send_buffer(ctx->encoder_input_port, buffer);
-            CHECK_STATUS(status, "send buffer failed");
-            //printf("frame sent to encoder\n");
-        }
+
+        //buffer->pts = vcos_getmicrosecs64();
+        //printf("new video frame   %lld+%lld\n", buffer->pts, get_usecs() - buffer->pts);
+        status = mmal_port_send_buffer(ctx->encoder_input_port, buffer);
+        CHECK_STATUS(status, "send buffer failed");
+
+        //printf("frame sent to encoder\n");
         if (port->is_enabled)
         {
 
@@ -168,14 +179,7 @@ static void encoder_input_buffer_callback(MMAL_PORT_T *port, MMAL_BUFFER_HEADER_
     }
 }
 
-// static MMAL_BOOL_T pool_buffer_available_callback(MMAL_POOL_T *pool, MMAL_BUFFER_HEADER_T *buffer,
-//                                                   void *userdata)
-// {
-//     fprintf(stderr, "INFO:%s pool %8x buffer %8x\n", __func__, pool, buffer);
-//     MMAL_PARAM_UNUSED(userdata);
-//     mmal_queue_put(pool->queue, buffer);
-//     return 0;
-// }
+
 
 static void encoder_output_buffer_callback(MMAL_PORT_T *port, MMAL_BUFFER_HEADER_T *buffer)
 {
@@ -195,9 +199,13 @@ static void encoder_output_buffer_callback(MMAL_PORT_T *port, MMAL_BUFFER_HEADER
     }
     else
     {
-        mmal_buffer_header_mem_lock(buffer);
-        fwrite(buffer->data, 1, buffer->length, ctx->fp);
-        mmal_buffer_header_mem_unlock(buffer);
+        //printf("new encoded frame %lld+%lld\n", buffer->pts, get_usecs() - buffer->pts);
+        if (ctx->fp)
+        {
+            mmal_buffer_header_mem_lock(buffer);
+            fwrite(buffer->data, 1, buffer->length, ctx->fp);
+            mmal_buffer_header_mem_unlock(buffer);
+        }
         mmal_buffer_header_release(buffer);
         if (port->is_enabled)
         {
@@ -214,7 +222,7 @@ static void encoder_output_buffer_callback(MMAL_PORT_T *port, MMAL_BUFFER_HEADER
 
             if (!new_buffer || status != MMAL_SUCCESS)
             {
-                fprintf(stderr, "Unable to return a buffer to the video port\n");
+                fprintf(stderr, "Unable to return a buffer to the output port\n");
             }
         }
     }
@@ -249,29 +257,12 @@ int setup_camera(PORT_USERDATA *ctx)
     MMAL_STATUS_T       status;
     MMAL_ES_FORMAT_T    *format;
 
-    // status = mmal_component_create(MMAL_COMPONENT_DEFAULT_CAMERA, &camera);
-    // if (status != MMAL_SUCCESS) {
-    //     fprintf(stderr, "Error: create camera %x\n", status);
-    //     return -1;
-    // }
-    // userdata->camera = camera;
+    // The camera has already been set up, here we just set up the video port
+    // by copying the format across and setting up the buffers
     ctx->camera_video_port = ctx->camera->output[MMAL_CAMERA_VIDEO_PORT];
-
-
     mmal_format_copy(ctx->camera_video_port->format, ctx->camera->output[0]->format);
 
     format = ctx->camera_video_port->format;
-    format->encoding                    = MMAL_ENCODING_I420;
-    //format->encoding                    = MMAL_ENCODING_OPAQUE;
-    format->encoding_variant            = MMAL_ENCODING_I420;
-    format->es->video.width             = VIDEO_WIDTH;
-    format->es->video.height            = VIDEO_HEIGHT;
-    format->es->video.crop.x            = 0;
-    format->es->video.crop.y            = 0;
-    format->es->video.crop.width        = VIDEO_WIDTH;
-    format->es->video.crop.height       = VIDEO_HEIGHT;
-    format->es->video.frame_rate.num    = VIDEO_FPS;
-    format->es->video.frame_rate.den    = 1;
 
     ctx->camera_video_port->buffer_size = format->es->video.width * format->es->video.height * 12 / 8;
     ctx->camera_video_port->buffer_num = 2;
@@ -291,8 +282,8 @@ int setup_camera(PORT_USERDATA *ctx)
     status = mmal_port_enable(ctx->camera_video_port, camera_video_buffer_callback);
     CHECK_STATUS(status, "unable to enable camera video port");
 
-    status = mmal_component_enable(ctx->camera);
-    CHECK_STATUS(status, "unable to enable camera");
+    // status = mmal_component_enable(ctx->camera);
+    // CHECK_STATUS(status, "unable to enable camera");
 
     // fill_port_buffer(userdata->camera_video_port, userdata->camera_video_port_pool);
     // fill_port_buffer(userdata->camera_video_port, userdata->encoder_input_pool);
@@ -337,8 +328,9 @@ int setup_encoder(PORT_USERDATA *ctx)
 
     // Only supporting H264 at the moment
     // encoder_output_port->format->encoding = MMAL_ENCODING_H264;
+    //ctx->encoder_output_port->format->encoding                  = MMAL_ENCODING_H264;
     ctx->encoder_output_port->format->encoding                  = MMAL_ENCODING_MJPEG;
-    ctx->encoder_output_port->format->bitrate                   = 10000000;
+    ctx->encoder_output_port->format->bitrate                   = 5000000;
     ctx->encoder_output_port->format->es->video.width           = ctx->width;
     ctx->encoder_output_port->format->es->video.height          = ctx->height;
     ctx->encoder_output_port->format->es->video.frame_rate.num  = 30;
@@ -360,11 +352,17 @@ int setup_encoder(PORT_USERDATA *ctx)
     status = mmal_port_parameter_set_boolean(ctx->encoder_output_port, MMAL_PARAMETER_ZERO_COPY, MMAL_TRUE);
     CHECK_STATUS(status, "failed to set zero copy on encoder output");
 
+    // H264 parameters, these seem to be necessary for gstreamer to join an alreay running stream
+    // FIXME can't get h264 latency anything like as low as the ~80ms for mjpeg
+    // mmal_port_parameter_set_boolean(ctx->encoder_output_port, MMAL_PARAMETER_VIDEO_ENCODE_INLINE_HEADER, 1);
+    // MMAL_PARAMETER_UINT32_T param = {{ MMAL_PARAMETER_INTRAPERIOD, sizeof(param)}, 1};
+    // mmal_port_parameter_set(ctx->encoder_output_port, &param.hdr);
+
+
+
     ctx->encoder_input_pool = (MMAL_POOL_T *)mmal_port_pool_create(ctx->encoder_input_port, 
                                                 ctx->encoder_input_port->buffer_num, 
                                                 ctx->encoder_input_port->buffer_size);
-    // mmal_pool_callback_set(ctx->encoder_input_pool, pool_buffer_available_callback, NULL);
-
     status = mmal_port_enable(ctx->encoder_input_port, encoder_input_buffer_callback);
     CHECK_STATUS(status, "unable to enable encoder input port");
     fprintf(stderr, "INFO:Encoder input pool %8x has been created\n", ctx->encoder_input_pool);
@@ -372,7 +370,6 @@ int setup_encoder(PORT_USERDATA *ctx)
     ctx->encoder_output_pool = (MMAL_POOL_T *)mmal_port_pool_create(ctx->encoder_output_port, 
                                                 ctx->encoder_output_port->buffer_num, 
                                                 ctx->encoder_output_port->buffer_size);
-    // mmal_pool_callback_set(ctx->encoder_output_pool, pool_buffer_available_callback, NULL);
     status = mmal_port_enable(ctx->encoder_output_port, encoder_output_buffer_callback);
     CHECK_STATUS(status, "unable to enable encoder output port");
     fprintf(stderr, "INFO:Encoder output pool %8x has been created\n", ctx->encoder_output_pool);
@@ -393,22 +390,16 @@ int main(int argc, char **argv)
     // clean up after ctrl-c
     signal(SIGINT, ctrlc_handler);
 
-    ctx.width = VIDEO_WIDTH;
-    ctx.height = VIDEO_HEIGHT;
-
-    fprintf(stderr, "VIDEO_WIDTH : %i\n", ctx.width);
-    fprintf(stderr, "VIDEO_HEIGHT: %i\n", ctx.height);
+    ctx.width   = VIDEO_WIDTH;
+    ctx.height  = VIDEO_HEIGHT;
 
     State state("Hello world", 0, 0, 1024, 512);
     Detector detector(state, ctx.width, ctx.height, 1.0);
+    detector.params.scale_adapt = true;
     MarkerVec mv;
-    detector.camera.camera_matrix = (cv::Mat1f(3, 3) << 400, 0, 320,
-                                     0, 400, 240,
-                                     0, 0, 1);
-    detector.camera.dist_coeffs = (cv::Mat1f(1, 5) << 0, 0, 0, 0, 0);
 
     Cparams cparams = {
-        .width = (uint16_t)ctx.width,
+        .width  = (uint16_t)ctx.width,
         .height = (uint16_t)ctx.height,
         .fps = 30,
         .format = CAMGL_Y,
@@ -417,11 +408,41 @@ int main(int argc, char **argv)
 
     ctx.camera = gcs_get_camera(t_camera.camGL->gcs);
 
-    if (!(ctx.fp = fopen("test.vid", "wb")))
+    struct sockaddr_in saddr = {
+        .sin_family = AF_INET,
+        .sin_port   = htons(2222),
+        .sin_addr   = {0}
+    };
+    bool listening = false;
+    int sock_listen = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0);
+    if (sock_listen >= 0)
     {
-        printf("Failed to open output file\n");
-        exit(1);
+        int val = 1;
+        setsockopt(sock_listen, SOL_SOCKET, SO_REUSEADDR, &val, sizeof(int));
+        if (bind(sock_listen, (struct sockaddr *)&saddr, sizeof(saddr)) >= 0)
+        {
+            // successful bind, we can now try and listen
+            if (!listen(sock_listen, 0))
+            {
+                // now listening
+                listening = true;
+            }
+            else
+                printf("Failed to listen on socket %d\n", errno);
+        }
+        else
+            printf("Failed to bind on socket %d\n", errno);
     }
+    else
+        printf("Failed to create socket %d\n", errno);
+
+
+
+    // if (!(ctx.fp = fopen("test.vid", "wb")))
+    // {
+    //     printf("Failed to open output file\n");
+    //     exit(1);
+    // }
 
     status = (MMAL_STATUS_T)setup_camera(&ctx);
     CHECK_STATUS(status, "Setup camera failed");
@@ -434,11 +455,25 @@ int main(int argc, char **argv)
     char text[256];
 
     master.set_time();
-    int frames = 0;
-    int alltotal = 0;
+    int frames      = 0;
+    int alltotal    = 0;
     MMAL_BUFFER_HEADER_T *buffer;
-    while (keep_running && frames < 100)
+    while (keep_running)
     {
+        // See if there has been a connection on the socket
+        if (listening)
+        {
+            int sfd = accept(sock_listen, 0, 0);
+            if (sfd >= 0)
+            {
+                if (!(ctx.fp = fdopen(sfd, "w")));
+                {
+                    printf("Failed to open socket file %d\n", errno);
+                }
+            }
+        }
+
+
         frames++;
 
         status = (MMAL_STATUS_T)t_camera.get_cam_frame();
@@ -447,12 +482,13 @@ int main(int argc, char **argv)
         int t0 = master.elapsed_time(true);
 
 
-        int t1 = master.diff_time();
 
         // Run the detector
         mv = detector.detect(t_camera);
 
-        int t2 = master.diff_time();
+        printf("%16lld+%5lld ", t_camera.pts, get_usecs() - t_camera.pts);
+
+        int t1 = master.diff_time();
 
         // Show some stats
         int total = 0;
@@ -461,7 +497,7 @@ int main(int argc, char **argv)
             printf("%6d ", detector.times[i]);
             total += detector.times[i];
         }
-        printf("%6d %3d | %6d %6d %6d | %6d %6d %6d\n", total, mv.size(), t0, t1, t2,
+        printf("%6d %3d | %6d %6d %6d | %6d %6d\n", total, mv.size(), t0, t1,
                ctx.times[0], ctx.times[1], ctx.times[2]);
         alltotal += t0;
     }
@@ -473,86 +509,12 @@ int main(int argc, char **argv)
         fclose(ctx.fp);
     if (ctx.encoder)
         mmal_component_release(ctx.encoder);
+    if (sock_listen >= 0)
+        // We have now finished with the server socket
+        close(sock_listen);
 
     return 0;
 }
 
-// Useful info
-// http://www.jvcref.com/files/PI/documentation/html/group___mmal_buffer_header.html
-// https://github.com/t-moe/rpi_mmal_examples
-// https://github.com/tasanakorn/rpi-mmal-demo
-// https://forums.raspberrypi.com/viewtopic.php?t=167652
 
-// Enable CPU side messages:
-// export VC_LOGLEVEL="mmal:trace"
-//
-// Dump GPU side messages
-// sudo vcdbg log msg
 
-// #define CHECK_STATUS(status, msg)  \
-//     if (status != MMAL_SUCCESS)    \
-//     {                              \
-//         fprintf(stderr, msg "\n"); \
-//         exit(1);                   \
-//     }
-
-// static struct CONTEXT_T
-// {
-//     VCOS_SEMAPHORE_T    semaphore;
-//     MMAL_QUEUE_T        *queue_encoded;
-//     MMAL_STATUS_T       status;
-// } context;
-
-// int main(int argc, char** argv) {
-
-//     MMAL_COMPONENT_T    *camera = 0;
-//     MMAL_COMPONENT_T    *splitter = 0;
-//     MMAL_COMPONENT_T    *preview = 0;
-//     MMAL_COMPONENT_T    *encoder = 0;
-//     MMAL_CONNECTION_T   *camera_splitter_connection = 0;
-//     MMAL_CONNECTION_T   *splitter_encoder_connection = 0;
-//     MMAL_CONNECTION_T   *splitter_preview_connection = 0;
-//     int fd;
-//     const char *filename = "output.mjpeg";
-
-//     // Initialize MMAL
-//     bcm_host_init();
-//     vcos_semaphore_create(&context.semaphore, "example", 1);
-
-//     // Create components
-//     CHECK_STATUS(mmal_component_create(MMAL_COMPONENT_DEFAULT_CAMERA, &camera), "create camera failed");
-//     CHECK_STATUS(mmal_component_create(MMAL_COMPONENT_DEFAULT_SPLITTER, &splitter), "create splitter failed");
-//     CHECK_STATUS(mmal_component_create(MMAL_COMPONENT_DEFAULT_VIDEO_ENCODER, &encoder), "create encoder failed");
-//     CHECK_STATUS(mmal_component_create(MMAL_COMPONENT_DEFAULT_VIDEO_RENDERER, &preview), "create preview failed");
-
-//     CHECK_STATUS(mmal_port_parameter_set_boolean(camera->output[0], MMAL_PARAMETER_ZERO_COPY, MMAL_TRUE), "failed zero copy on camera out");
-//     CHECK_STATUS(mmal_port_parameter_set_boolean(splitter->input[0], MMAL_PARAMETER_ZERO_COPY, MMAL_TRUE), "failed zero copy on splitter in");
-//     CHECK_STATUS(mmal_port_parameter_set_boolean(splitter->output[0], MMAL_PARAMETER_ZERO_COPY, MMAL_TRUE), "failed zero copy on splitter out 0");
-//     CHECK_STATUS(mmal_port_parameter_set_boolean(splitter->output[1], MMAL_PARAMETER_ZERO_COPY, MMAL_TRUE), "failed zero copy on splitter out 0");
-//     CHECK_STATUS(mmal_port_parameter_set_boolean(preview->input[0], MMAL_PARAMETER_ZERO_COPY, MMAL_TRUE), "failed zero copy on preview in");
-//     CHECK_STATUS(mmal_port_parameter_set_boolean(encoder->input[0], MMAL_PARAMETER_ZERO_COPY, MMAL_TRUE), "failed zero copy on encoder in");
-//     CHECK_STATUS(mmal_port_parameter_set_boolean(encoder->output[0], MMAL_PARAMETER_ZERO_COPY, MMAL_TRUE), "failed zero copy on encoder out");
-
-//     {
-//         MMAL_PARAMETER_CAMERA_CONFIG_T cam_config =
-//         {
-//             { MMAL_PARAMETER_CAMERA_CONFIG, sizeof (cam_config)},
-//             .max_stills_w = 1280,
-//             .max_stills_h = 720,
-//             .stills_yuv422 = 0,
-//             .one_shot_stills = 1,
-//             .max_preview_video_w = 1280,
-//             .max_preview_video_h = 720,
-//             .num_preview_video_frames = 3,
-//             .stills_capture_circular_buffer_height = 0,
-//             .fast_preview_resume = 0,
-//             .use_stc_timestamp = MMAL_PARAM_TIMESTAMP_MODE_RESET_STC
-//         };
-//         mmal_port_parameter_set(camera->control, &cam_config.hdr);
-//     }
-
-//     // Close the output file
-//     close(fd);
-
-//     return 0;
-// }

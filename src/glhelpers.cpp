@@ -203,6 +203,9 @@ State::State(std::string name, int x, int y, int width, int height)
     //glEnable(GL_CULL_FACE);
 
 }
+
+
+
 void State::bind_fb_screen(int w, int h)
 {
     //printf("Setting viewport %d %d %d %d\n", w, h, vpwidth, vpheight);
@@ -1235,6 +1238,8 @@ int Texture::get_cam_frame()
         bus_address = lock();
         //printf("bus addr %08x\n", bus_address);
         unlock();
+        pts = ((MMAL_BUFFER_HEADER_T*)mmal_cam_buffer_header)->pts;
+
 
         if (gcsParams.mmalEnc == 0)
         {

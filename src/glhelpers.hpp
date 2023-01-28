@@ -434,6 +434,7 @@ public:
     State                       &state;
 	GCS_CameraParams            gcsParams;
     bool                        camera;
+    uint64_t                    pts;            // timestamp if from camera
 private:
 };
 

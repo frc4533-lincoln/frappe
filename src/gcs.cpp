@@ -12,7 +12,7 @@
 #include "interface/mmal/util/mmal_default_components.h"
 #include "interface/mmal/util/mmal_util_params.h"
 
-//#include "glhelpers.hpp"
+#include "qpu_base.h"
 
 #define CHECK_STATUS_M(STATUS, MSG, ERRHANDLER) \
 	if (STATUS != MMAL_SUCCESS) { \
@@ -110,9 +110,6 @@ GCS *gcs_create(GCS_CameraParams *cameraParams)
 	// https://www.raspberrypi.org/forums/viewtopic.php?f=43&t=175711
 	mmal_port_parameter_set_uint32(gcs->camera->control, MMAL_PARAMETER_CAMERA_ISP_BLOCK_OVERRIDE, ~cameraParams->disableISPBlocks);
 
-	// Enable MMAL camera component
-	mstatus = mmal_component_enable(gcs->camera);
-	CHECK_STATUS_M(mstatus, "Failed to enable camera", error_cameraEnable);
 
 	// Set camera parameters (See mmal_parameters_camera.h)
 	if (gcs->cameraParams.shutterSpeed != 0)
@@ -137,6 +134,14 @@ GCS *gcs_create(GCS_CameraParams *cameraParams)
 		MMAL_PARAMETER_AWB_GAINS_T awbGains = { { MMAL_PARAMETER_CUSTOM_AWB_GAINS, sizeof(awbGains) }, { 1, 1 }, { 1, 1 }};
 		mmal_port_parameter_set(gcs->camera->control, &awbGains.hdr);
 	}
+
+    {
+        // This must be done before enabling the camera, or timestamps will always be zero
+        MMAL_PARAMETER_CAMERA_STC_MODE_T stc_mode = { { MMAL_PARAMETER_USE_STC, sizeof(stc_mode) }, MMAL_PARAM_STC_MODE_RAW };
+        mmal_port_parameter_set(gcs->camera->control, &stc_mode.hdr);
+    }
+
+
 	// Enable MMAL camera port
 	gcs->camera->control->userdata = (struct MMAL_PORT_USERDATA_T *)gcs;
 	mstatus = mmal_port_enable(gcs->camera->control, gcs_onCameraControl);
@@ -173,6 +178,10 @@ GCS *gcs_create(GCS_CameraParams *cameraParams)
 
 //	cameraParams->width = gcs->cameraOutput->format->es->video.width;
 //	LOG_ERROR("Format %d", gcs->cameraOutput->format->es->video.width);
+
+	// Enable MMAL camera component
+	mstatus = mmal_component_enable(gcs->camera);
+	CHECK_STATUS_M(mstatus, "Failed to enable camera", error_cameraEnable);
 
 	LOG_TRACE("Finished setup of GCS");
 
@@ -356,6 +365,9 @@ static void gcs_onCameraOutput(MMAL_PORT_T *port, MMAL_BUFFER_HEADER_T *buffer)
 	}
 	else
 	{
+        // Timestamp the frame
+        //buffer->pts = vcos_getmicrosecs64();
+
 		// Reset watchdog timer for detecting when frames stop coming
 		vcos_timer_set(&gcs->watchdogTimer, GCS_WATCHDOG_TIMEOUT_MS);
 
@@ -373,6 +385,7 @@ static void gcs_onCameraOutput(MMAL_PORT_T *port, MMAL_BUFFER_HEADER_T *buffer)
 
 		// Set the newest camera frame
 		gcs->curFrameBuffer = buffer;
+        //printf("new preview frame %lld+%lld\n", buffer->pts, get_usecs() - buffer->pts);
 
 		// Send buffer back to port for use (needed? it's a port buffer, should automatically do it, right?)
 		while ((buffer = mmal_queue_get(gcs->bufferPool->queue)) != NULL)

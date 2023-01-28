@@ -79,5 +79,8 @@ void qpu_destroyBase (QPU_BASE *base);
 
 
 
+// Get system clock
+uint64_t get_usecs();
+
 
 #endif

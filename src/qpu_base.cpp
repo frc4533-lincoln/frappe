@@ -62,6 +62,8 @@ void qpu_releaseBuffer(QPU_BUFFER *buffer)
 	mem_free(buffer->mb, buffer->handle);
 }
 
+// Global that always points to peripherals
+static volatile uint32_t *peripherals;
 
 /* Initializes QPU access base */
 int qpu_initBase(QPU_BASE *base, int mb)
@@ -73,6 +75,7 @@ int qpu_initBase(QPU_BASE *base, int mb)
     printf("Mapping registers to %08x+%08x\n", base->host.peri_addr, base->host.peri_size);
 	base->peripherals = (volatile uint32_t *)mapmem(base->host.peri_addr, base->host.peri_size);
 	if (!base->peripherals) return -2;
+    peripherals = base->peripherals;
 
 	// Open mailbox for GPU memory allocation
 	base->mb = mb;
@@ -162,4 +165,23 @@ int qpu_getHostInformation(QPU_HOST *host)
     printf("mem_map:%08x mem_flg:%x peri_addr:%08x, peri_size:%08x\n", 
         host->mem_map, host->mem_flg, host->peri_addr, host->peri_size);
 	return 0;
+}
+
+// Get system clock
+uint64_t get_usecs()
+{
+    uint32_t h1, h2, l;
+    // Because there is no atomic 64 bit read, the clock may have rolled over the 32 bit 
+    // boundary between reads of each half. We handle this with the following strategy:
+    // Read high then low then high. If the two high values are the same, the
+    // clock has not rolled over and we just combine. If the differ, it has rolled
+    // over, and we need to read the low register again to get a rolled value and
+    // combine with the second high read
+    h1  = peripherals[ST_CHI];
+    l   = peripherals[ST_CLO];
+    h2  = peripherals[ST_CHI];
+    if (h1 != h2)
+        l = peripherals[ST_CLO];
+    
+    return (uint64_t)h2 << 32 | (uint64_t)l;
 }

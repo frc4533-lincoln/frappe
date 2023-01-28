@@ -75,4 +75,9 @@
 #define V3D_DBQITE	(0xC00e2C >> 2)
 #define V3D_DBQITC	(0xC00e30 >> 2)
 
+
+// System clock
+#define ST_CLO      (0x3004 >> 2)
+#define ST_CHI      (0x3008 >> 2)
+
 #endif

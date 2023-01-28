@@ -2,9 +2,15 @@
 
 A fiducial recognition library designed to run on the Raspberry Pi Zero up to Raspberry 3B+. Currently handles a fixed resolution of 640x480 pixels, and the dictionary ArUco 36h12.
 
+## Acknowledgements
+https://github.com/Seneral/VC4CV
+
+
+
 ## Building
 
 There are many dependancies to build properly, not least a source build of OpenCV, which takes many hours if run on an RPi0. We make this easier by providing a Docker build that runs a cross compilation and provides a set of libraries to copy to the target.
+
 
 
 ## Dependencies
@@ -82,3 +88,21 @@ To build:
 ```
 
 
+To run, on a pi zero, either copy or use a network mount:
+```
+cd userland/raspicam/build_rpi0
+./raspivid -t 0
+```
+
+## To run:
+
+On Pi Zero
+```
+sudo ./stream
+```
+
+On other computer (eg with ip address or rpi0)
+
+```
+gst-launch-1.0 -v tcpclientsrc host=192.168.0.78 port=2222 ! jpegdec ! videoflip method="rotate-180" ! videoconvert ! autovideosink
+```
