@@ -14,7 +14,6 @@
 // sudo vcdbg log msg
 
 
-// Author: Tasanakorn
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -25,7 +24,8 @@
 #include <netdb.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
-
+#include <zmq.hpp>
+#include <string>
 
 #include "bcm_host.h"
 #include "interface/vcos/vcos.h"
@@ -111,6 +111,20 @@ void main()
     gl_FragColor = texture2D(tex, tex_coord);
 }
 )glsl";
+
+
+
+//https://stackoverflow.com/questions/2342162/stdstring-formatting-like-sprintf
+#include <memory>
+template<typename ... Args>
+std::string string_format( const std::string& format, Args ... args )
+{
+    size_t size = snprintf( nullptr, 0, format.c_str(), args ... ) + 1; // Extra space for '\0'
+    std::unique_ptr<char[]> buf( new char[ size ] ); 
+    snprintf( buf.get(), size, format.c_str(), args ... );
+    return std::string( buf.get(), buf.get() + size - 1 ); // We don't want the '\0' inside
+}
+
 
 static void camera_video_buffer_callback(MMAL_PORT_T *port, MMAL_BUFFER_HEADER_T *buffer)
 {
@@ -326,7 +340,6 @@ int setup_encoder(PORT_USERDATA *ctx)
     status = mmal_port_format_commit(ctx->encoder_input_port);
     CHECK_STATUS(status, "unable to commit encoder input format");
 
-    // Only supporting H264 at the moment
     // encoder_output_port->format->encoding = MMAL_ENCODING_H264;
     //ctx->encoder_output_port->format->encoding                  = MMAL_ENCODING_H264;
     ctx->encoder_output_port->format->encoding                  = MMAL_ENCODING_MJPEG;
@@ -352,7 +365,7 @@ int setup_encoder(PORT_USERDATA *ctx)
     status = mmal_port_parameter_set_boolean(ctx->encoder_output_port, MMAL_PARAMETER_ZERO_COPY, MMAL_TRUE);
     CHECK_STATUS(status, "failed to set zero copy on encoder output");
 
-    // H264 parameters, these seem to be necessary for gstreamer to join an alreay running stream
+    // H264 parameters, these seem to be necessary for gstreamer to join an already running stream
     // FIXME can't get h264 latency anything like as low as the ~80ms for mjpeg
     // mmal_port_parameter_set_boolean(ctx->encoder_output_port, MMAL_PARAMETER_VIDEO_ENCODE_INLINE_HEADER, 1);
     // MMAL_PARAMETER_UINT32_T param = {{ MMAL_PARAMETER_INTRAPERIOD, sizeof(param)}, 1};
@@ -390,6 +403,9 @@ int main(int argc, char **argv)
     // clean up after ctrl-c
     signal(SIGINT, ctrlc_handler);
 
+    // -------------------------------------------------------------------
+    // Set up decoder and camera
+    // -------------------------------------------------------------------
     ctx.width   = VIDEO_WIDTH;
     ctx.height  = VIDEO_HEIGHT;
 
@@ -408,6 +424,11 @@ int main(int argc, char **argv)
 
     ctx.camera = gcs_get_camera(t_camera.camGL->gcs);
 
+
+
+    // -------------------------------------------------------------------
+    // Set up TCP socket to listen for connection and stream MJPEG to it
+    // -------------------------------------------------------------------
     struct sockaddr_in saddr = {
         .sin_family = AF_INET,
         .sin_port   = htons(2222),
@@ -438,12 +459,9 @@ int main(int argc, char **argv)
 
 
 
-    // if (!(ctx.fp = fopen("test.vid", "wb")))
-    // {
-    //     printf("Failed to open output file\n");
-    //     exit(1);
-    // }
-
+    // -------------------------------------------------------------------
+    // Set up MMAL pipeline from camera to encoder
+    // -------------------------------------------------------------------
     status = (MMAL_STATUS_T)setup_camera(&ctx);
     CHECK_STATUS(status, "Setup camera failed");
 
@@ -451,9 +469,21 @@ int main(int argc, char **argv)
     CHECK_STATUS(status, "Setup encoder failed");
 
  
+    // -------------------------------------------------------------------
+    // Set up ZMQ sockets
+    // -------------------------------------------------------------------
+    zmq::context_t zmqctx;
+    zmq::socket_t fidpub(zmqctx, zmq::socket_type::pub);
+    fidpub.bind("tcp://*:2223");
 
-    char text[256];
 
+    // -------------------------------------------------------------------
+    // Main loop. Grab frame from camera and run the detector on the 
+    // frame. Send any detected fiducials over a ZMQ PUB/SUB socket.
+    // Each frame, see if a request has been made on the TCP video streaming
+    // request socket, if so set that up.
+    // Also send stats over another ZMQ PUB.SUB socket.
+    // -------------------------------------------------------------------
     master.set_time();
     int frames      = 0;
     int alltotal    = 0;
@@ -481,8 +511,6 @@ int main(int argc, char **argv)
 
         int t0 = master.elapsed_time(true);
 
-
-
         // Run the detector
         mv = detector.detect(t_camera);
 
@@ -499,6 +527,25 @@ int main(int argc, char **argv)
         }
         printf("%6d %3d | %6d %6d %6d | %6d %6d\n", total, mv.size(), t0, t1,
                ctx.times[0], ctx.times[1], ctx.times[2]);
+
+        std::string msgtxt = string_format("%lld %lld %d %d ", 
+            t_camera.pts, get_usecs() - t_camera.pts,
+            mv.size(), total);
+        for (int i = 0; i < mv.size(); i++)
+        {
+            auto &m = mv[i];
+            msgtxt += string_format("%d %f %f %f %f %f %f %f %f ",
+                m.id, 
+                m.p[0].x, m.p[0].y, 
+                m.p[1].x, m.p[1].y, 
+                m.p[2].x, m.p[2].y, 
+                m.p[3].x, m.p[3].y);
+        }
+        zmq::message_t msg(msgtxt.size());
+        memcpy(msg.data(), msgtxt.data(), msgtxt.size());
+        fidpub.send(msg);
+
+        
         alltotal += t0;
     }
     printf("%6d %6.2f\n", alltotal / 100, 100e6 / (float)alltotal);

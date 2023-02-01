@@ -45,10 +45,12 @@ set(OPENGL_LIBRARIES
     ${LIB_GLES})
 
 find_package(OpenCV REQUIRED)
+find_library(LIB_ZMQ NAMES zmq HINTS /usr/lib/arm-linux-gnueabihf)
 
 set(TARGET_LIBRARIES
     pthread
     curses
+    ${LIB_ZMQ}
     ${OPENGL_LIBRARIES}
     ${CMAKE_DL_LIBS}
     ${OpenCV_LIBS} 
