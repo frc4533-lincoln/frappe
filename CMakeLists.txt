@@ -53,7 +53,11 @@ set(TARGET_LIBRARIES
     ${LIB_ZMQ}
     ${OPENGL_LIBRARIES}
     ${CMAKE_DL_LIBS}
-    ${OpenCV_LIBS} 
+    opencv_core
+    opencv_imgproc
+    opencv_calib3d
+    opencv_imgcodecs
+    #${OpenCV_LIBS} 
 )
 
 
