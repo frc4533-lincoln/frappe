@@ -411,7 +411,8 @@ int main(int argc, char **argv)
 
     State state("Hello world", 0, 0, 1024, 512);
     Detector detector(state, ctx.width, ctx.height, 1.0);
-    detector.params.scale_adapt = true;
+    detector.params.scale_adapt = false;
+    //detector.params.scale_adapt = false;
     MarkerVec mv;
 
     Cparams cparams = {

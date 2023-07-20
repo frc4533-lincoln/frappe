@@ -1089,8 +1089,8 @@ void Detector::extract2(Texture &buf)
         const float yf = (y_flip ? -1.0 : 1.0) / buf.buffer_height;
 
 
-        std::vector<float> t(mv.size() * 9);
         int limit = mv.size() > maxlimit ? maxlimit : mv.size();
+        std::vector<float> t(limit * 9);
 
         for(int i = 0; i < limit; i++)
         {
@@ -1122,7 +1122,7 @@ void Detector::extract2(Texture &buf)
             t[i * 9 + 8] = (float)m.at<double>(2, 2);
             tm[1] += aux_timer.diff_time();
         }
-        p_qpu_warp->execute(buf, t_fid, t, mv.size());
+        p_qpu_warp->execute(buf, t_fid, t, limit);
         tm[2] = aux_timer.diff_time();
         //t_fid.dump();
         //exit(1);

@@ -21,43 +21,6 @@ The latest Raspian OS image that ships with the required funtionality is raspios
 wget https://downloads.raspberrypi.org/raspios_lite_armhf/images/raspios_lite_armhf-2021-01-12/2021-01-11-raspios-buster-armhf-lite.zip
 ```
 
-## QEMU issues
-One way of working with images is to use a qemu-chroot, but this does not work properly
-on and M1 machine, because of an assumption that all aarch64 will support arm32
-
-The only way I've managed to get this to work is to build an x86_64 docker image, run this
-with --platform linux/x86_64, which will use rosetta, then use a qemu chroot inside the 
-docker to manipulate the file system image. This fails with ubuntu 20.04, possibly:
-https://bugs.launchpad.net/ubuntu/+source/qemu/+bug/1906479
-but seems to work on 22.04.. no, a fluke? Tried different versions, works with 18.04. This
-bug seems to be persistantly showing up as a regression, havent seen deinite answers..
-
-
-## Binfmt
-List
-```
-update-binfmts --display
-```
-
-Register new
-```
-update-binfmts --install qemu-arm /usr/bin/qemu-arm-static
-update-binfmts --install qemu-arm /usr/bin/qemu-arm-static --magic \x7f\x45\x4c\x46\x01\x01\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x02\x00\x28\x00 --mask \xff\xff\xff\xff\xff\xff\xff\x00\xff\xff\xff\xff\xff\xff\xff\xff\xfe\xff\xff\xff
-```
-
-the arm info is:
-```
-qemu-arm (enabled):
-     package = qemu-user-static
-        type = magic
-      offset = 0
-       magic = \x7f\x45\x4c\x46\x01\x01\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x02\x00\x28\x00
-        mask = \xff\xff\xff\xff\xff\xff\xff\x00\xff\xff\xff\xff\xff\xff\xff\xff\xfe\xff\xff\xff
- interpreter = /usr/bin/qemu-arm-static
-    detector = 
-
-```
-
 
 ## Build
 
@@ -67,7 +30,7 @@ complete app. The image is a standard raspbian install image with a bunch
 of necessities installed, used for a true source of headers, and for building
 and installing OpenCV 4.5.2.
 
-Do:
+To build the docker containers and RPI image, do:
 ```
 ./scripts/build_all.sh
 ```
@@ -77,22 +40,6 @@ To compile the Frappe library and basic apps, do:
 ./scripts/compile.sh
 ```
 
-## Hacked userland
-This is just the raspicam bits lifted and hacked to use the Frappe library.
-This uses the Frappe library to recognise fiducials in the camera video stream and 
-make them available over a tcp socket
-
-To build:
-```
-./scripts/compile_userland.sh
-```
-
-
-To run, on a pi zero, either copy or use a network mount:
-```
-cd userland/raspicam/build_rpi0
-./raspivid -t 0
-```
 
 ## To run:
 
@@ -101,8 +48,31 @@ On Pi Zero
 sudo ./stream
 ```
 
-On other computer (eg with ip address or rpi0)
+On other computer (eg with ip address of rpi0)
 
 ```
 gst-launch-1.0 -v tcpclientsrc host=192.168.0.78 port=2222 ! jpegdec ! videoflip method="rotate-180" ! videoconvert ! autovideosink
 ```
+
+Access to fiducials is via ZMQ. Port 2223 is a publisher sending a continuous stream of
+detected fiducials. The format each string of the stream is:
+```
+
+%lld %lld %d %d [%d %f %f %f %f %f %f %f %f]*\n
+# with the bracketed part repeated by number of detections (including zero).
+
+Fields are
+<camera capture timestamp (us)>     #
+<delta to send time (us)>           # This is the total processing time
+<number of fiducials>
+<fid processing time (us)>          # This is just frappe time
+
+# Fiducials
+<id> <p0.x> <p0.y> <p1.y> <p1.y> <p2.y> <p2.y> <p3.y> <p3.y>
+<id> <p0.x> <p0.y> <p1.y> <p1.y> <p2.y> <p2.y> <p3.y> <p3.y>
+<id> <p0.x> <p0.y> <p1.y> <p1.y> <p2.y> <p2.y> <p3.y> <p3.y>
+...
+<id> <p0.x> <p0.y> <p1.y> <p1.y> <p2.y> <p2.y> <p3.y> <p3.y>
+```
+
+
