@@ -3,33 +3,37 @@
 A fiducial recognition library designed to run on the Raspberry Pi Zero up to Raspberry 3B+. Currently handles a fixed resolution of 640x480 pixels, and the dictionary ArUco 36h12.
 
 ## Acknowledgements
+Thanks to the many people who have worked on reverse engineering the undocumented parts of the Broadcom SoC and providing tools and clues. Apologies if I've forgotten anyone.
+
 https://github.com/Seneral/VC4CV
 
+https://github.com/Pro/raspi-toolchain
+
+https://github.com/dbhi/qus
 
 
-## Building
+## Introduction
+Building apps natively on the RPi Zero that utilise the QPUs and VPU is extremely tedious. We need not just a native toolchain, but also the VC4 toolchain and the QPU assembler. For Frappe, we also need full source build of OpenCV.
 
-There are many dependancies to build properly, not least a source build of OpenCV, which takes many hours if run on an RPi0. We make this easier by providing a Docker build that runs a cross compilation and provides a set of libraries to copy to the target.
+The approach we have taken is:
+
+* Use a standard RPi disk image for the golden source of headers and libraries
+* Use kpartx to create loopback mounts to the image so we can work on it
+* Enable Docker support for QEMU so we can chroot into an RPi disk image
+* Build all the tools for crosscompilation in a Docker container
+* Within the Docker container, chroot into the RPi image and apt install OpenCV requirements
+* Within the Docker container, download, crosscompile and install OpenCV onto the RPi image
+* Compile Frappe, using VC4 gcc and QPU assembler, and the system and OpenCV libraries on the RPi image
+
+The resultant binaries and libraries are left in the build_rpi0 directory.
+
+The compilation framework is standard cmake, with the addition of a `CMAKE_TOOLCHAIN_FILE` from 
+https://github.com/Pro/raspi-toolchain with modifications, which makes sure the correct cross compilers are used.
 
 
-
-## Dependencies
-The library relies on the /dev/vcsm kernel interface for providing cached zero-copy shared buffers between CPU and GPU (VC4). This was removed from RPi kernels from 5.9 onwards, with future similar functionality to be provided by DMA-BUF, however this is currently much slower since it doesn't seem to support cached access to the shared buffer.
-
-The latest Raspian OS image that ships with the required funtionality is raspios_lite_armhf-2021-01-12, with kernel 5.4.83-v7+
-```
-wget https://downloads.raspberrypi.org/raspios_lite_armhf/images/raspios_lite_armhf-2021-01-12/2021-01-11-raspios-buster-armhf-lite.zip
-```
 
 
 ## Build
-
-Make containers and image, this is a docker container with cross compile tools
-for both the arm cpu and for the qpu and vpu to allow full cross compile of the
-complete app. The image is a standard raspbian install image with a bunch
-of necessities installed, used for a true source of headers, and for building
-and installing OpenCV 4.5.2.
-
 To build the docker containers and RPI image, do:
 ```
 ./scripts/build_all.sh
@@ -41,17 +45,54 @@ To compile the Frappe library and basic apps, do:
 ```
 
 
-## To run:
+## Working on the RPi0
+The updated image can be burned onto an SD card and used directly on the RPi0. For development ease, we use a USB-Ethernet adaptor and a USB-MicroB to USB-A adaptor to give the Zero a wired network connection. We set up an NFS share and mount that on the RPi0, ssh'ing into it.
+
+Development then follows the pattern:
+
+On the development PC, within the share
+```
+./scripts/compile.sh
+```
+On Zero, within the share, e.g.
+```
+sudo ./build_rpi0/stream
+```
+
+Getting things wrong with QPU or VPU code will frequently cause a complete lockup and usually need a power cycle.
+
+
+
+## Dependencies
+The library relies on the /dev/vcsm kernel interface for providing cached zero-copy shared buffers between CPU and GPU (VC4). This was removed from RPi kernels from 5.9 onwards, with future similar functionality to be provided by DMA-BUF, however this is currently much slower since it doesn't seem to support cached access to the shared buffer.
+
+The latest Raspian OS image that ships with the required funtionality is raspios_lite_armhf-2021-01-12, with kernel 5.4.83-v7+
+
+
+
+
+## Applications:
+All applications need to be run with root permissions.
+
+#### `min_detect`
+Runs a single image repeatedly, collecting stats.
+
+#### `small`
+Runs a full directory of images, collecting stats.
+
+#### `stream`
+Connects to camera, runs detector on camera image, streams fiducial information over ZMQ. Also compresses images to MJPEG and streams them over TCP.
+
 
 On Pi Zero
 ```
-sudo ./stream
+sudo ./build_rpi0/stream
 ```
 
-On other computer (eg with ip address of rpi0)
+On other computer (replace <> with RPi0 IP address)
 
 ```
-gst-launch-1.0 -v tcpclientsrc host=192.168.0.78 port=2222 ! jpegdec ! videoflip method="rotate-180" ! videoconvert ! autovideosink
+gst-launch-1.0 -v tcpclientsrc host=<RPi0 IP address> port=2222 ! jpegdec ! videoflip method="rotate-180" ! videoconvert ! autovideosink
 ```
 
 Access to fiducials is via ZMQ. Port 2223 is a publisher sending a continuous stream of

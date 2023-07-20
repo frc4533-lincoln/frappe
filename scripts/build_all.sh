@@ -16,4 +16,4 @@ echo "Building cross compiler container"
 echo "Building native OpenCV"
 ./scripts/build_opencv.sh images/rpi0_test_2021_01_11.img
 echo "Installing additional packages"
-./scripts/install_packages.sh
+./scripts/install_packages.sh images/rpi0_test_2021_01_11.img
