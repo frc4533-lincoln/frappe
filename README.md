@@ -5,12 +5,15 @@ A fiducial recognition library designed to run on the Raspberry Pi Zero up to Ra
 ## Acknowledgements
 Thanks to the many people who have worked on reverse engineering the undocumented parts of the Broadcom SoC and providing tools and clues. Apologies if I've forgotten anyone.
 
-https://github.com/Seneral/VC4CV
-
-https://github.com/Pro/raspi-toolchain
-
-https://github.com/dbhi/qus
-
+* Herman Hermitage et. al. [VideoCore IV Programmers Manual](https://github.com/hermanhermitage/videocoreiv/wiki/VideoCore-IV-Programmers-Manual)
+* Marcel Müller [vc4asm - Macro assembler for Broadcom VideoCore IV](https://github.com/maazl/vc4asm)
+* Julian Brown [VC4 GCC Toolchain](https://github.com/itszor/vc4-toolchain)
+* Seneral [VC4CV computer vision framework](https://github.com/Seneral/VC4CV)
+* Daniel Stadelmann [OpenCL for VideoCore IV GPU](https://github.com/doe300/VC4CL)
+* Kristina Brooks [Minimal Raspberry Pi VPU firmware](https://github.com/christinaa/rpi-open-firmware)
+* Broadcom [VideoCore IV 3D Architecture Reference Manual](https://docs.broadcom.com/doc/12358545)
+* https://github.com/Pro/raspi-toolchain
+* https://github.com/dbhi/qus
 
 ## Introduction
 Building apps natively on the RPi Zero that utilise the QPUs and VPU is extremely tedious. We need not just a native toolchain, but also the VC4 toolchain and the QPU assembler. For Frappe, we also need full source build of OpenCV.
